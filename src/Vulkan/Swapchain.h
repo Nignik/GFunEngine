@@ -10,24 +10,36 @@ public:
 	Swapchain(const std::shared_ptr<VulkanContext>& vk, SDL_Window* window);
 	~Swapchain();
 
-	[[nodiscard]] VkFormat imageFormat() const;
-	[[nodiscard]] std::vector<VkImageView> imageViews() const;
-	[[nodiscard]] std::vector<VkFramebuffer> framebuffers() const;
-	[[nodiscard]] VkExtent2D extent() const;
-
+	[[nodiscard]] VkSwapchainKHR GetSwapchain() const;
+	[[nodiscard]] VkRenderPass GetRenderPass() const;
+	[[nodiscard]] VkFormat GetImageFormat() const;
+	[[nodiscard]] std::vector<VkImageView> GetImageViews() const;
+	[[nodiscard]] std::vector<VkFramebuffer> GetFramebuffers() const;
+	[[nodiscard]] VkExtent2D GetExtent() const;
+	[[nodiscard]] bool IsResized() const;
 	[[nodiscard]] VkImageView GetImageView(size_t idx) const;
+
+	void SetResized(bool resized);
+
 private:
 	std::shared_ptr<VulkanContext> m_vk;
 
     VkSwapchainKHR m_swapchain{};
+	VkRenderPass m_renderPass{};
 
     std::vector<VkImage> m_images{};
     std::vector<VkImageView> m_imageViews{};
+	std::vector<VkFramebuffer> m_framebuffers{};
 
     VkFormat m_imageFormat{};
     VkExtent2D m_extent{};
     uint32_t m_currentFrame = 0;
     bool m_resized = false;
+
+	void createSwapchain(SDL_Window* window);
+	void createRenderPass();
+	void createImageViews();
+	void createFramebuffers();
 
 	void recreateSwapChain();
 

@@ -22,6 +22,7 @@ VulkanContext::VulkanContext(SDL_Window* window)
     createSurface(window);
     pickPhysicalDevice();
     createLogicalDevice();
+    createCommandPool();
 }
 
 VulkanContext::~VulkanContext()
@@ -34,24 +35,39 @@ VulkanContext::~VulkanContext()
     vkDestroyInstance(m_instance, nullptr);
 }
 
-VkInstance VulkanContext::instance() const
+VkInstance VulkanContext::GetInstance() const
 {
     return m_instance;
 }
 
-VkDevice VulkanContext::device() const
+VkDevice VulkanContext::GetDevice() const
 {
     return m_device;
 }
 
-VkPhysicalDevice VulkanContext::physicalDevice() const
+VkPhysicalDevice VulkanContext::GetPhysicalDevice() const
 {
     return m_physicalDevice;
 }
 
-VkSurfaceKHR VulkanContext::surface() const
+VkSurfaceKHR VulkanContext::GetSurface() const
 {
     return m_surface;
+}
+
+VkCommandPool VulkanContext::GetCommandPool() const
+{
+    return m_commandPool;
+}
+
+VkQueue VulkanContext::GetGraphicsQueue() const
+{
+    return m_graphicsQueue;
+}
+
+VkQueue VulkanContext::GetPresentQueue() const
+{
+    return m_presentQueue;
 }
 
 void VulkanContext::createInstance()
@@ -99,6 +115,20 @@ void VulkanContext::createSurface(SDL_Window* window)
 {
     if (!SDL_Vulkan_CreateSurface(window, m_instance, nullptr, &m_surface))
         throw std::runtime_error("failed to create surface");
+}
+
+void VulkanContext::createCommandPool()
+{
+    QueueFamilyIndices queueFamilyIndices = findQueueFamilies(m_physicalDevice, m_surface);
+
+    VkCommandPoolCreateInfo poolInfo{};
+    poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+    poolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+    poolInfo.queueFamilyIndex = queueFamilyIndices.graphicsFamily.value();
+
+    if (vkCreateCommandPool(m_device, &poolInfo, nullptr, &m_commandPool) != VK_SUCCESS) {
+        throw std::runtime_error("failed to create graphics command pool!");
+    }
 }
 
 void VulkanContext::createLogicalDevice()

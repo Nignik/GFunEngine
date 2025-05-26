@@ -6,7 +6,7 @@ RenderPass::RenderPass(const std::shared_ptr<VulkanContext>& vk, const Swapchain
     : m_vk(vk)
 {
     VkAttachmentDescription colorAttachment{};
-    colorAttachment.format = swapchain.imageFormat();
+    colorAttachment.format = swapchain.GetImageFormat();
     colorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
     colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
     colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
@@ -41,13 +41,13 @@ RenderPass::RenderPass(const std::shared_ptr<VulkanContext>& vk, const Swapchain
     renderPassInfo.dependencyCount = 1;
     renderPassInfo.pDependencies = &dependency;
 
-    if (vkCreateRenderPass(m_vk->device(), &renderPassInfo, nullptr, &m_renderPass) != VK_SUCCESS)
+    if (vkCreateRenderPass(m_vk->GetDevice(), &renderPassInfo, nullptr, &m_renderPass) != VK_SUCCESS)
         throw std::runtime_error("failed to create render pass!");
 }
 
 RenderPass::~RenderPass()
 {
-    vkDestroyRenderPass(m_vk->device(), m_renderPass, nullptr);
+    vkDestroyRenderPass(m_vk->GetDevice(), m_renderPass, nullptr);
 }
 
 VkRenderPass RenderPass::renderPass() const

@@ -12,16 +12,21 @@ public:
     VulkanContext(SDL_Window* window);
     ~VulkanContext();
 
-    [[nodiscard]] VkInstance instance() const;
-    [[nodiscard]] VkDevice device() const;
-    [[nodiscard]] VkPhysicalDevice physicalDevice() const;
-    [[nodiscard]] VkSurfaceKHR surface() const;
+    [[nodiscard]] VkInstance GetInstance() const;
+    [[nodiscard]] VkDevice GetDevice() const;
+    [[nodiscard]] VkPhysicalDevice GetPhysicalDevice() const;
+    [[nodiscard]] VkSurfaceKHR GetSurface() const;
+    [[nodiscard]] VkCommandPool GetCommandPool() const;
+    [[nodiscard]] VkQueue GetGraphicsQueue() const;
+    [[nodiscard]] VkQueue GetPresentQueue() const;
 
 private:
     VkInstance m_instance{};
     VkDevice m_device{};
     VkPhysicalDevice m_physicalDevice{};
     VkSurfaceKHR m_surface{};
+
+    VkCommandPool m_commandPool;
 
     VkQueue m_graphicsQueue{};
     VkQueue m_presentQueue{};
@@ -31,6 +36,7 @@ private:
     void createInstance();
     void createLogicalDevice();
     void createSurface(SDL_Window* window);
+    void createCommandPool();
 
     void pickPhysicalDevice();
     bool isDeviceSuitable(VkPhysicalDevice device);
