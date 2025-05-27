@@ -26,7 +26,7 @@ private:
     VkPhysicalDevice m_physicalDevice{};
     VkSurfaceKHR m_surface{};
 
-    VkCommandPool m_commandPool;
+    VkCommandPool m_commandPool{};
 
     VkQueue m_graphicsQueue{};
     VkQueue m_presentQueue{};

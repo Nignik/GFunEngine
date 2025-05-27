@@ -2,11 +2,13 @@
 
 #include <algorithm>
 #include <stdexcept>
+#include <SDL3/SDL_events.h>
 
 Swapchain::Swapchain(const std::shared_ptr<VulkanContext>& vk, SDL_Window* window)
-    : m_vk(vk)
+    : m_vk(vk),
+    m_window(window)
 {
-    createSwapchain(window);
+    createSwapchain();
     createRenderPass();
     createImageViews();
     createFramebuffers();
@@ -14,10 +16,23 @@ Swapchain::Swapchain(const std::shared_ptr<VulkanContext>& vk, SDL_Window* windo
 
 Swapchain::~Swapchain()
 {
-    for (auto imageView : m_imageViews)
-        vkDestroyImageView(m_vk->GetDevice(), imageView, nullptr);
+    cleanupSwapchain();
+    vkDestroyRenderPass(m_vk->GetDevice(), m_renderPass, nullptr);
+}
 
-    vkDestroySwapchainKHR(m_vk->GetDevice(), m_swapchain, nullptr);
+void Swapchain::RecreateSwapchain()
+{
+    while (SDL_GetWindowFlags(m_window) & SDL_WINDOW_MINIMIZED) {
+        SDL_Event event;
+        SDL_WaitEvent(&event);
+    }
+    vkDeviceWaitIdle(m_vk->GetDevice());
+
+    cleanupSwapchain();
+
+    createSwapchain();
+    createImageViews();
+    createFramebuffers();
 }
 
 VkSwapchainKHR Swapchain::GetSwapchain() const { return m_swapchain; }
@@ -34,7 +49,7 @@ void Swapchain::SetResized(bool resized)
     m_resized = resized;
 }
 
-void Swapchain::createSwapchain(SDL_Window* window)
+void Swapchain::createSwapchain()
 {
     SwapChainSupportDetails swapChainSupport = querySwapChainSupport(m_vk->GetPhysicalDevice(), m_vk->GetSurface());
 
@@ -42,7 +57,7 @@ void Swapchain::createSwapchain(SDL_Window* window)
     m_imageFormat = format;
 
     VkPresentModeKHR presentMode = chooseSwapPresentMode(swapChainSupport.presentModes);
-    m_extent = chooseSwapExtent(swapChainSupport.capabilities, window);
+    m_extent = chooseSwapExtent(swapChainSupport.capabilities, m_window);
 
     uint32_t imageCount = swapChainSupport.capabilities.minImageCount + 1;
     if (swapChainSupport.capabilities.maxImageCount > 0 && imageCount > swapChainSupport.capabilities.maxImageCount) {
@@ -178,6 +193,19 @@ void Swapchain::createFramebuffers()
             throw std::runtime_error("failed to create framebuffer!");
         }
     }
+}
+
+void Swapchain::cleanupSwapchain()
+{
+    VkDevice device = m_vk->GetDevice();
+
+    for (auto framebuffer : m_framebuffers)
+        vkDestroyFramebuffer(device, framebuffer, nullptr);
+
+    for (auto imageView : m_imageViews)
+        vkDestroyImageView(device, imageView, nullptr);
+
+    vkDestroySwapchainKHR(device, m_swapchain, nullptr);
 }
 
 VkSurfaceFormatKHR Swapchain::chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& availableFormats)

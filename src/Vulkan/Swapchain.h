@@ -10,6 +10,8 @@ public:
 	Swapchain(const std::shared_ptr<VulkanContext>& vk, SDL_Window* window);
 	~Swapchain();
 
+	void RecreateSwapchain();
+
 	[[nodiscard]] VkSwapchainKHR GetSwapchain() const;
 	[[nodiscard]] VkRenderPass GetRenderPass() const;
 	[[nodiscard]] VkFormat GetImageFormat() const;
@@ -23,6 +25,7 @@ public:
 
 private:
 	std::shared_ptr<VulkanContext> m_vk;
+	SDL_Window* m_window;
 
     VkSwapchainKHR m_swapchain{};
 	VkRenderPass m_renderPass{};
@@ -36,12 +39,12 @@ private:
     uint32_t m_currentFrame = 0;
     bool m_resized = false;
 
-	void createSwapchain(SDL_Window* window);
+	void createSwapchain();
 	void createRenderPass();
 	void createImageViews();
 	void createFramebuffers();
 
-	void recreateSwapChain();
+	void cleanupSwapchain();
 
 	VkSurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& availableFormats);
 	VkPresentModeKHR chooseSwapPresentMode(const std::vector<VkPresentModeKHR>& availablePresentModes);

@@ -1,9 +1,11 @@
 #pragma once
 
-#include "Vulkan/GraphicsPipeline.h"
-#include "Vulkan/Swapchain.h"
-#include "Vulkan/VulkanContext.h"
-#include "Drawable.h"
+#include <System.h>
+
+#include "GraphicsPipeline.h"
+#include "Swapchain.h"
+#include "VulkanContext.h"
+#include "../Drawable.h"
 
 
 
@@ -32,5 +34,4 @@ private:
 
     void createCommandBuffers();
     void recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex, std::vector<Drawable>& drawables);
-    void recreateSwapchain();
 };

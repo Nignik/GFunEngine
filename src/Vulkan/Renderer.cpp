@@ -6,7 +6,7 @@
 #include <SDL3/SDL_events.h>
 
 /*TODO:
- * 1. Separate the rest of the renderer. make renderer into a system
+ * 1. Make renderer into a system
  * 2. Cube should be a drawable entity
  */
 
@@ -40,27 +40,15 @@ Renderer::Renderer(SDL_Window* window, const std::shared_ptr<VulkanContext>& ctx
 
 Renderer::~Renderer()
 {
-    vkDeviceWaitIdle(m_ctx->GetDevice());
-}
+    VkDevice device = m_ctx->GetDevice();
+    vkDeviceWaitIdle(device);
 
-Drawable Renderer::CreateDrawable(std::vector<Vertex>& vertices, std::vector<uint32_t>& indices) const
-{
-    // Create vertex buffer
-    VkDeviceSize vertexBufferSize = sizeof(vertices[0]) * vertices.size();
-    VkDeviceSize indexBufferSize = sizeof(indices[0]) * indices.size();
-
-    // Create vertex buffer
-    auto vertexBuffer = std::make_shared<Buffer>(m_ctx, vertexBufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-    Buffer vertexStagingBuffer(m_ctx, vertexBufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-    vertexStagingBuffer.copyData(vertices.data());
-    vertexBuffer->copyBuffer(m_ctx->GetGraphicsQueue(), m_ctx->GetCommandPool(), vertexStagingBuffer);
-
-    auto indexBuffer = std::make_shared<Buffer>(m_ctx, indexBufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-    Buffer indexStagingBuffer(m_ctx, indexBufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-    indexStagingBuffer.copyData(indices.data());
-    indexBuffer->copyBuffer(m_ctx->GetGraphicsQueue(), m_ctx->GetCommandPool(), indexStagingBuffer);
-
-    return {std::move(vertices), std::move(indices), vertexBuffer, indexBuffer};
+    for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
+    {
+        vkDestroySemaphore(device, m_renderFinishedSemaphores[i], nullptr);
+        vkDestroySemaphore(device, m_imageAvailableSemaphores[i], nullptr);
+        vkDestroyFence(device, m_inFlightFences[i], nullptr);
+    }
 }
 
 void Renderer::createCommandBuffers()
@@ -120,7 +108,7 @@ void Renderer::recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t image
     VkDeviceSize offsets[] = {0};
     vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
 
-    vkCmdBindIndexBuffer(commandBuffer, drawables[0].indexBuffer->get(), 0, VK_INDEX_TYPE_UINT16);
+    vkCmdBindIndexBuffer(commandBuffer, drawables[0].indexBuffer->get(), 0, VK_INDEX_TYPE_UINT32);
 
     vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_gfx.GetPipelineLayout(), 0, 1, &m_gfx.GetDescriptorSets()[m_currentFrame], 0, nullptr);
 
@@ -133,18 +121,6 @@ void Renderer::recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t image
     }
 }
 
-void Renderer::recreateSwapchain()
-{
-    while (SDL_GetWindowFlags(m_window) & SDL_WINDOW_MINIMIZED) {
-        SDL_Event event;
-        SDL_WaitEvent(&event);
-    }
-    vkDeviceWaitIdle(m_ctx->GetDevice());
-
-    //TODO: Ensure this is efficient
-    m_swapchain = Swapchain(m_ctx, m_window);
-}
-
 void Renderer::DrawFrame(std::vector<Drawable>& drawables)
 {
     vkWaitForFences(m_ctx->GetDevice(), 1, &m_inFlightFences[m_currentFrame], VK_TRUE, UINT64_MAX);
@@ -153,7 +129,7 @@ void Renderer::DrawFrame(std::vector<Drawable>& drawables)
     VkResult result = vkAcquireNextImageKHR(m_ctx->GetDevice(), m_swapchain.GetSwapchain(), UINT64_MAX, m_imageAvailableSemaphores[m_currentFrame], VK_NULL_HANDLE, &imageIndex);
     if (result == VK_ERROR_OUT_OF_DATE_KHR)
     {
-        recreateSwapchain();
+        m_swapchain.RecreateSwapchain();
         return;
     }
     if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR)
@@ -198,12 +174,10 @@ void Renderer::DrawFrame(std::vector<Drawable>& drawables)
     if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR || m_swapchain.IsResized())
     {
         m_swapchain.SetResized(false);
-        recreateSwapchain();
+        m_swapchain.RecreateSwapchain();
     }
     else if (result != VK_SUCCESS)
-    {
         throw std::runtime_error("failed to present swap chain image!");
-    }
 
     m_currentFrame = (m_currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
 }

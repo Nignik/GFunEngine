@@ -6,7 +6,6 @@
 
 #include "../utils.h"
 #include "VulkanContext.h"
-#include "RenderPass.h"
 
 
 GraphicsPipeline::GraphicsPipeline(const std::shared_ptr<VulkanContext>& vk, VkRenderPass renderPass)
@@ -22,7 +21,11 @@ GraphicsPipeline::GraphicsPipeline(const std::shared_ptr<VulkanContext>& vk, VkR
 
 GraphicsPipeline::~GraphicsPipeline()
 {
-    vkDestroyPipeline(m_vk->GetDevice(), m_graphicsPipeline, nullptr);
+    VkDevice device = m_vk->GetDevice();
+    vkDestroyPipeline(device, m_graphicsPipeline, nullptr);
+    vkDestroyPipelineLayout(device, m_pipelineLayout, nullptr);
+    vkDestroyDescriptorPool(device, m_descriptorPool, nullptr);
+    vkDestroyDescriptorSetLayout(device, m_descriptorSetLayout, nullptr);
 }
 
 VkPipeline GraphicsPipeline::GetGraphicsPipeline() const { return m_graphicsPipeline; }

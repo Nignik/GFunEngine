@@ -6,7 +6,6 @@
 #include <vulkan/vulkan_core.h>
 
 #include "Buffer.h"
-#include "RenderPass.h"
 #include "VulkanContext.h"
 
 constexpr int MAX_FRAMES_IN_FLIGHT = 3;

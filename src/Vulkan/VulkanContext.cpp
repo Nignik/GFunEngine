@@ -27,6 +27,8 @@ VulkanContext::VulkanContext(SDL_Window* window)
 
 VulkanContext::~VulkanContext()
 {
+    vkDestroyCommandPool(m_device, m_commandPool, nullptr);
+
     if (g_enableValidationLayers)
         destroyDebugUtilsMessengerEXT(m_instance, m_debugMessenger, nullptr);
 
