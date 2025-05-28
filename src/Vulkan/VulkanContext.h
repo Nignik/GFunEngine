@@ -25,6 +25,7 @@ private:
     VkDevice m_device{};
     VkPhysicalDevice m_physicalDevice{};
     VkSurfaceKHR m_surface{};
+    VkPhysicalDeviceProperties m_gpuProperties{};
 
     VkCommandPool m_commandPool{};
 

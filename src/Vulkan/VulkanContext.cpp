@@ -23,6 +23,8 @@ VulkanContext::VulkanContext(SDL_Window* window)
     pickPhysicalDevice();
     createLogicalDevice();
     createCommandPool();
+
+    vkGetPhysicalDeviceProperties(m_physicalDevice, &m_gpuProperties);
 }
 
 VulkanContext::~VulkanContext()

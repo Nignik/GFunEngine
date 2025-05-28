@@ -3,6 +3,7 @@
 #include "Ecs.h"
 #include "Vulkan/Renderer.h"
 #include "Window.h"
+#include "RendererSystem.h"
 
 std::vector<Vertex> vertices = {
     {{-0.5f, 0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}}, // 0
@@ -30,7 +31,7 @@ std::vector<uint32_t> indices = {
     1,  6,  5     // 1-6-5
 };
 
-Drawable createDrawable(std::shared_ptr<VulkanContext>& ctx, std::vector<Vertex>& vertices, std::vector<uint32_t>& indices)
+Drawable createDrawable(std::shared_ptr<VulkanContext>& ctx, std::vector<Vertex> vertices, std::vector<uint32_t> indices)
 {
     // Create vertex buffer
     VkDeviceSize vertexBufferSize = sizeof(vertices[0]) * vertices.size();
@@ -52,19 +53,35 @@ Drawable createDrawable(std::shared_ptr<VulkanContext>& ctx, std::vector<Vertex>
 
 int main() {
     auto& ecs = Ecs::GetInstance();
+
 	try
 	{
 		Window mainWindow;
 	    auto vk = std::make_shared<VulkanContext>(mainWindow.window());
-	    Renderer renderer(mainWindow.window(), vk);
 
-	    auto drawable = createDrawable(vk, vertices, indices);
-	    std::vector<Drawable> drawables = {drawable};
+	    constexpr int N = 3;
+	    glm::mat4 model = glm::mat4{1.f};
+	    for (int i = 0; i < N; i++)
+	    {
+	        auto entt = ecs.CreateEntity();
+	        auto drawable = createDrawable(vk, vertices, indices);
+	        drawable.ubo = UniformBufferObject(model, glm::mat4{}, glm::mat4{});
+	        ecs.AddComponents(entt, std::move(drawable));
+
+	        model = glm::translate(model, glm::vec3(0.3f, 0.3f, 0.f));
+	    }
+
+	    Renderer renderer(mainWindow.window(), vk);
+        ecs.AddSystem<RenderSystem>(renderer);
 
 		bool running = true;
         SDL_Event event;
         while (running)
         {
+            static auto startTime = std::chrono::high_resolution_clock::now();
+            auto currentTime = std::chrono::high_resolution_clock::now();
+            float dt = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
+
             while (SDL_PollEvent(&event)) {
                 switch (event.type) {
                     case SDL_EVENT_QUIT:
@@ -78,7 +95,7 @@ int main() {
                         break;
                 }
             }
-            renderer.DrawFrame(drawables);
+            ecs.UpdateSystems(dt);
             vkDeviceWaitIdle(vk->GetDevice());
         }
 	}
@@ -86,6 +103,4 @@ int main() {
 	{
 		std::cout << e.what() << '\n';
 	}
-
-
 }

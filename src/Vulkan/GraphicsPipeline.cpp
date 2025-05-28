@@ -7,15 +7,15 @@
 #include "../utils.h"
 #include "VulkanContext.h"
 
-
-GraphicsPipeline::GraphicsPipeline(const std::shared_ptr<VulkanContext>& vk, VkRenderPass renderPass)
-    : m_vk(vk)
+GraphicsPipeline::GraphicsPipeline(const std::shared_ptr<VulkanContext>& vk, VkRenderPass renderPass, size_t drawablesCount)
+    : m_vk(vk),
+    m_drawablesCount(drawablesCount)
 {
     createDescriptorPool();
     createDescriptorSetLayout();
     createPipelineLayout();
-    createUniformBuffers();
-    createDescriptorSets();
+    createUniformBuffers(drawablesCount);
+    createDescriptorSets(drawablesCount);
     createGraphicsPipeline(renderPass);
 }
 
@@ -33,33 +33,56 @@ VkDescriptorPool GraphicsPipeline::GetDescriptorPool() const { return m_descript
 VkDescriptorSetLayout GraphicsPipeline::GetDescriptorSetLayout() const { return m_descriptorSetLayout; }
 VkPipelineLayout GraphicsPipeline::GetPipelineLayout() const { return m_pipelineLayout; }
 std::vector<std::shared_ptr<Buffer>> GraphicsPipeline::GetUniformBuffers() const { return m_uniformBuffers; }
+VkDescriptorSet GraphicsPipeline::GetDescriptorSet(uint32_t currentFrame, uint32_t currentDrawable) const { return m_descriptorSets[currentFrame * m_drawablesCount + currentDrawable]; }
 std::vector<VkDescriptorSet> GraphicsPipeline::GetDescriptorSets() const { return m_descriptorSets; }
 
 void GraphicsPipeline::createDescriptorPool()
 {
+    uint32_t totalSets = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT * m_drawablesCount);
+
     VkDescriptorPoolSize poolSize{};
     poolSize.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-    poolSize.descriptorCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
+    poolSize.descriptorCount = totalSets;
 
     VkDescriptorPoolCreateInfo poolInfo{};
     poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
     poolInfo.poolSizeCount = 1;
     poolInfo.pPoolSizes = &poolSize;
-    poolInfo.maxSets = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
+    poolInfo.maxSets = totalSets;
 
     if (vkCreateDescriptorPool(m_vk->GetDevice(), &poolInfo, nullptr, &m_descriptorPool) != VK_SUCCESS) {
         throw std::runtime_error("failed to create descriptor pool!");
     }
 }
 
+VkDescriptorSetLayoutBinding GraphicsPipeline::createDescriptorSetLayoutBinding(VkDescriptorType type, VkShaderStageFlags stageFlags, uint32_t binding)
+{
+    VkDescriptorSetLayoutBinding setbind = {};
+    setbind.binding = binding;
+    setbind.descriptorCount = 1;
+    setbind.descriptorType = type;
+    setbind.pImmutableSamplers = nullptr;
+    setbind.stageFlags = stageFlags;
+
+    return setbind;
+}
+VkWriteDescriptorSet GraphicsPipeline::createWriteDescriptorBuffer(VkDescriptorType type, VkDescriptorSet dstSet, VkDescriptorBufferInfo* bufferInfo, uint32_t binding)
+{
+    VkWriteDescriptorSet write = {};
+    write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    write.pNext = nullptr;
+    write.dstBinding = binding;
+    write.dstSet = dstSet;
+    write.descriptorCount = 1;
+    write.descriptorType = type;
+    write.pBufferInfo = bufferInfo;
+
+    return write;
+}
+
 void GraphicsPipeline::createDescriptorSetLayout()
 {
-    VkDescriptorSetLayoutBinding uboLayoutBinding{};
-    uboLayoutBinding.binding = 0;
-    uboLayoutBinding.descriptorCount = 1;
-    uboLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-    uboLayoutBinding.pImmutableSamplers = nullptr;
-    uboLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+    auto uboLayoutBinding = createDescriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT, 0);
 
     VkDescriptorSetLayoutCreateInfo layoutInfo{};
     layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
@@ -82,34 +105,35 @@ void GraphicsPipeline::createPipelineLayout()
     }
 }
 
-void GraphicsPipeline::createUniformBuffers()
+void GraphicsPipeline::createUniformBuffers(size_t drawablesCount)
 {
-    VkDeviceSize bufferSize = sizeof(UniformBufferObject);
+    VkDeviceSize bufferSize = sizeof(UniformBufferObject); // TODO: Allow for different buffer sizes
 
-    m_uniformBuffers.reserve(MAX_FRAMES_IN_FLIGHT);
-
-    for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
+    m_uniformBuffers.reserve(MAX_FRAMES_IN_FLIGHT * drawablesCount);
+    for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT * drawablesCount; i++)
     {
         m_uniformBuffers.push_back(std::make_shared<Buffer>(m_vk, bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT));
         m_uniformBuffers.back()->Map();
     }
 }
 
-void GraphicsPipeline::createDescriptorSets()
+void GraphicsPipeline::createDescriptorSets(size_t drawablesCount)
 {
-    std::vector<VkDescriptorSetLayout> layouts(MAX_FRAMES_IN_FLIGHT, m_descriptorSetLayout);
+    int count = MAX_FRAMES_IN_FLIGHT * drawablesCount;
+
+    std::vector<VkDescriptorSetLayout> layouts(count, m_descriptorSetLayout);
     VkDescriptorSetAllocateInfo allocInfo{};
     allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
     allocInfo.descriptorPool = m_descriptorPool;
-    allocInfo.descriptorSetCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
+    allocInfo.descriptorSetCount = static_cast<uint32_t>(count);
     allocInfo.pSetLayouts = layouts.data();
 
-    m_descriptorSets.resize(MAX_FRAMES_IN_FLIGHT);
+    m_descriptorSets.resize(count);
     if (vkAllocateDescriptorSets(m_vk->GetDevice(), &allocInfo, m_descriptorSets.data()) != VK_SUCCESS) {
         throw std::runtime_error("failed to allocate descriptor sets!");
     }
 
-    for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+    for (size_t i = 0; i < count; i++) {
         VkDescriptorBufferInfo bufferInfo{};
         bufferInfo.buffer = m_uniformBuffers[i]->get(); //TODO: Change the getter naming
         bufferInfo.offset = 0;
@@ -248,19 +272,25 @@ VkShaderModule GraphicsPipeline::createShaderModule(const std::vector<char>& cod
     return shaderModule;
 }
 
-void GraphicsPipeline::UpdateUniformBuffer(VkExtent2D extent, uint32_t currentImage)
+void GraphicsPipeline::UpdateUniformBuffers(VkExtent2D extent, uint32_t currentImage, std::vector<Drawable>& drawables)
 {
-    static auto startTime = std::chrono::high_resolution_clock::now();
+    assert(m_drawablesCount == drawables.size());
 
+    static auto startTime = std::chrono::high_resolution_clock::now();
     auto currentTime = std::chrono::high_resolution_clock::now();
     float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
 
-    UniformBufferObject ubo{};
-    ubo.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-    ubo.view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-    ubo.proj = glm::perspective(glm::radians(45.0f), extent.width / (float) extent.height, 0.1f, 10.0f);
-    ubo.proj[1][1] *= -1;
+    for (int i = 0; i < m_drawablesCount; i++)
+    {
+        int idx = currentImage * m_drawablesCount + i;
+        auto ubo = drawables[i].ubo;
 
-    memcpy(m_uniformBuffers[currentImage]->GetMappedBuffer(), &ubo, sizeof(ubo));
+        ubo.model = glm::rotate(ubo.model, time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+        ubo.view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+        ubo.proj = glm::perspective(glm::radians(45.0f), extent.width / (float) extent.height, 0.1f, 10.0f);
+        ubo.proj[1][1] *= -1;
+
+        memcpy(m_uniformBuffers[idx]->GetMappedBuffer(), &ubo, sizeof(ubo));
+    }
 }
 

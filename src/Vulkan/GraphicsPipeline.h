@@ -5,57 +5,25 @@
 #include <glm/glm.hpp>
 #include <vulkan/vulkan_core.h>
 
+#include "../Drawable.h"
 #include "Buffer.h"
 #include "VulkanContext.h"
 
 constexpr int MAX_FRAMES_IN_FLIGHT = 3;
 
-struct UniformBufferObject {
-    alignas(16) glm::mat4 model;
-    alignas(16) glm::mat4 view;
-    alignas(16) glm::mat4 proj;
-};
-
-struct Vertex
-{
-    glm::vec3 pos;
-    glm::vec3 color;
-
-    static VkVertexInputBindingDescription getBindingDescription() {
-        VkVertexInputBindingDescription bindingDescription{};
-        bindingDescription.binding = 0;
-        bindingDescription.stride = sizeof(Vertex);
-        bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
-        return bindingDescription;
-    }
-
-    static std::array<VkVertexInputAttributeDescription, 2> getAttributeDescriptions() {
-        std::array<VkVertexInputAttributeDescription, 2> attributeDescriptions{};
-        attributeDescriptions[0].binding = 0;
-        attributeDescriptions[0].location = 0;
-        attributeDescriptions[0].format = VK_FORMAT_R32G32B32_SFLOAT;
-        attributeDescriptions[0].offset = offsetof(Vertex, pos);
-        attributeDescriptions[1].binding = 0;
-        attributeDescriptions[1].location = 1;
-        attributeDescriptions[1].format = VK_FORMAT_R32G32B32_SFLOAT;
-        attributeDescriptions[1].offset = offsetof(Vertex, color);
-
-        return attributeDescriptions;
-    }
-};
-
 class GraphicsPipeline {
 public:
-    GraphicsPipeline(const std::shared_ptr<VulkanContext>& vk, VkRenderPass renderPass);
+    GraphicsPipeline(const std::shared_ptr<VulkanContext>& vk, VkRenderPass renderPass, size_t drawablesCount);
     ~GraphicsPipeline();
 
-    void UpdateUniformBuffer(VkExtent2D extent, uint32_t currentImage);
+    void UpdateUniformBuffers(VkExtent2D extent, uint32_t currentImage, std::vector<Drawable>& drawables);
 
     [[nodiscard]] VkPipeline GetGraphicsPipeline() const;
     [[nodiscard]] VkDescriptorPool GetDescriptorPool() const;
     [[nodiscard]] VkDescriptorSetLayout GetDescriptorSetLayout() const;
     [[nodiscard]] VkPipelineLayout GetPipelineLayout() const;
     [[nodiscard]] std::vector<std::shared_ptr<Buffer>> GetUniformBuffers() const;
+    [[nodiscard]] VkDescriptorSet GetDescriptorSet(uint32_t currentFrame, uint32_t currentDrawable) const;
     [[nodiscard]] std::vector<VkDescriptorSet> GetDescriptorSets() const;
 
 private:
@@ -68,11 +36,16 @@ private:
     std::vector<std::shared_ptr<Buffer>> m_uniformBuffers;
     std::vector<VkDescriptorSet> m_descriptorSets{};
 
+    size_t m_drawablesCount = 0;
+
     void createDescriptorPool();
+    VkDescriptorSetLayoutBinding createDescriptorSetLayoutBinding(VkDescriptorType type, VkShaderStageFlags stageFlags, uint32_t binding);
+    VkWriteDescriptorSet createWriteDescriptorBuffer(VkDescriptorType type, VkDescriptorSet dstSet, VkDescriptorBufferInfo* bufferInfo , uint32_t binding);
     void createDescriptorSetLayout();
     void createPipelineLayout();
-    void createUniformBuffers();
-    void createDescriptorSets();
+    void createUniformBuffers(size_t drawablesCount);
+    void createDescriptorSets(size_t drawablesCount);
     void createGraphicsPipeline(VkRenderPass renderPass);
     VkShaderModule createShaderModule(const std::vector<char>& code);
+
 };

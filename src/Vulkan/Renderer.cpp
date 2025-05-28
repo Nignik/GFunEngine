@@ -5,6 +5,8 @@
 #include <ranges>
 #include <SDL3/SDL_events.h>
 
+#include "../Ecs.h"
+
 /*TODO:
  * 1. Make renderer into a system
  * 2. Cube should be a drawable entity
@@ -14,7 +16,7 @@ Renderer::Renderer(SDL_Window* window, const std::shared_ptr<VulkanContext>& ctx
     : m_window(window),
     m_ctx(ctx),
     m_swapchain(ctx, window),
-    m_gfx(ctx, m_swapchain.GetRenderPass())
+    m_gfx(ctx, m_swapchain.GetRenderPass(), Ecs::GetInstance().GetComponentArray<Drawable>().Size()) // TODO: make independent of drawables count (other ubos)
 {
     createCommandBuffers();
 
@@ -103,16 +105,17 @@ void Renderer::recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t image
     scissor.extent = m_swapchain.GetExtent();
     vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
 
-    // TODO: process all the drawables
-    VkBuffer vertexBuffers[] = {drawables[0].vertexBuffer->get()};
-    VkDeviceSize offsets[] = {0};
-    vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
+    for (const auto& [idx, drawable] : std::views::enumerate(drawables))
+    {
+        VkBuffer vb = drawable.vertexBuffer->get();
+        VkDeviceSize ofs = 0;
 
-    vkCmdBindIndexBuffer(commandBuffer, drawables[0].indexBuffer->get(), 0, VK_INDEX_TYPE_UINT32);
-
-    vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_gfx.GetPipelineLayout(), 0, 1, &m_gfx.GetDescriptorSets()[m_currentFrame], 0, nullptr);
-
-    vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(drawables[0].indices.size()), 1, 0, 0, 0);
+        vkCmdBindVertexBuffers(commandBuffer, 0, 1, &vb, &ofs);
+        vkCmdBindIndexBuffer(commandBuffer, drawable.indexBuffer->get(), 0, VK_INDEX_TYPE_UINT32);
+        auto descSet = m_gfx.GetDescriptorSet(m_currentFrame, idx);
+        vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_gfx.GetPipelineLayout(), 0, 1, &descSet, 0, nullptr);
+        vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(drawable.indices.size()), 1, 0, 0, 0);
+    }
 
     vkCmdEndRenderPass(commandBuffer);
 
@@ -144,7 +147,7 @@ void Renderer::DrawFrame(std::vector<Drawable>& drawables)
     VkSemaphore signalSemaphores[] = {m_renderFinishedSemaphores[m_currentFrame]};
     VkPipelineStageFlags waitStages[] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
 
-    m_gfx.UpdateUniformBuffer(m_swapchain.GetExtent(), imageIndex);
+    m_gfx.UpdateUniformBuffers(m_swapchain.GetExtent(), imageIndex, drawables);
 
     VkSubmitInfo submitInfo{};
     submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
