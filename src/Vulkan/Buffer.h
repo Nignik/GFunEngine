@@ -6,32 +6,32 @@
 
 class Buffer {
 public:
-    Buffer(const std::shared_ptr<VulkanContext>& vk, VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties);
+    Buffer(const std::shared_ptr<VulkanContext>& ctx, VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties);
     ~Buffer();
 
-    Buffer(const Buffer&)            = delete;
+    Buffer(const Buffer&) = delete;
     Buffer& operator=(const Buffer&) = delete;
 
     Buffer(Buffer&& other) noexcept;
     Buffer& operator=(Buffer&& other) noexcept;
 
-    void copyData(void* data);
-    void copyBuffer(VkQueue graphicsQueue, VkCommandPool commandPool, Buffer& srcBuffer);
+    void CopyData(void* data);
+    void CopyBuffer(VkQueue graphicsQueue, VkCommandPool commandPool, Buffer& srcBuffer);
 
-    [[nodiscard]] VkDeviceSize size() const;
-    [[nodiscard]] VkBuffer get() const;
+    [[nodiscard]] VkDeviceSize GetSize() const;
+    [[nodiscard]] VkBuffer GetVkBuffer() const;
     [[nodiscard]] void* GetMappedBuffer() const;
 
     void Map();
 
 private:
-    std::shared_ptr<VulkanContext> m_vk;
+    std::shared_ptr<VulkanContext> m_ctx;
     VkBuffer m_buffer{};
     VkDeviceSize m_size{};
     VkDeviceMemory m_memory{};
     void* m_mapped = nullptr;
 
+private:
     void cleanup() noexcept;
     void moveFrom(Buffer&& other) noexcept;
-	uint32_t findMemoryType(VkPhysicalDevice physicalDevice, uint32_t typeFilter, VkMemoryPropertyFlags properties);
 };

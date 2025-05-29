@@ -8,8 +8,9 @@ void RenderSystem::Update(float dt)
 {
     auto& ecs = Ecs::GetInstance();
 
-    std::vector<Drawable> drawables;
-    ecs.Each<Drawable>([&drawables](Hori::Entity, Drawable& drawable) {
+    static std::vector<Drawable> drawables;
+    drawables.clear();
+    ecs.Each<Drawable>([](Hori::Entity, Drawable& drawable) {
         drawables.push_back(drawable);
     });
 

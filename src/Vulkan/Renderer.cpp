@@ -3,7 +3,6 @@
 #include <stdexcept>
 #include <SDL3/SDL_vulkan.h>
 #include <ranges>
-#include <SDL3/SDL_events.h>
 
 #include "../Ecs.h"
 
@@ -16,28 +15,12 @@ Renderer::Renderer(SDL_Window* window, const std::shared_ptr<VulkanContext>& ctx
     : m_window(window),
     m_ctx(ctx),
     m_swapchain(ctx, window),
-    m_gfx(ctx, m_swapchain.GetRenderPass(), Ecs::GetInstance().GetComponentArray<Drawable>().Size()) // TODO: make independent of drawables count (other ubos)
+    m_gfx(ctx, m_swapchain.GetRenderPass(), Ecs::GetInstance().GetComponentArray<Drawable>().Size()), // TODO: make independent of drawables count (other ubos)
+    m_image(ctx, "C:/dev/GameEngines/GFunEngine/resources/statue.jpg"),
+    m_currentFrame(0)
 {
     createCommandBuffers();
-
-    // Initialize fences and semaphores
-    m_imageAvailableSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
-    m_renderFinishedSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
-    m_inFlightFences.resize(MAX_FRAMES_IN_FLIGHT);
-
-    VkSemaphoreCreateInfo semaphoreInfo{};
-    semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
-
-    VkFenceCreateInfo fenceInfo{};
-    fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-    fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
-
-    for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-        if (vkCreateSemaphore(m_ctx->GetDevice(), &semaphoreInfo, nullptr, &m_imageAvailableSemaphores[i]) != VK_SUCCESS ||
-            vkCreateSemaphore(m_ctx->GetDevice(), &semaphoreInfo, nullptr, &m_renderFinishedSemaphores[i]) != VK_SUCCESS ||
-            vkCreateFence(m_ctx->GetDevice(), &fenceInfo, nullptr, &m_inFlightFences[i]) != VK_SUCCESS)
-            throw std::runtime_error("failed to create synchronization objects for a frame!");
-    }
+    createSyncObjects();
 }
 
 Renderer::~Renderer()
@@ -65,6 +48,27 @@ void Renderer::createCommandBuffers()
 
     if (vkAllocateCommandBuffers(m_ctx->GetDevice(), &allocInfo, m_commandBuffers.data()) != VK_SUCCESS)
         throw std::runtime_error("failed to allocate command buffers!");
+}
+
+void Renderer::createSyncObjects()
+{
+    m_imageAvailableSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
+    m_renderFinishedSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
+    m_inFlightFences.resize(MAX_FRAMES_IN_FLIGHT);
+
+    VkSemaphoreCreateInfo semaphoreInfo{};
+    semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+
+    VkFenceCreateInfo fenceInfo{};
+    fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+    fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
+
+    for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+        if (vkCreateSemaphore(m_ctx->GetDevice(), &semaphoreInfo, nullptr, &m_imageAvailableSemaphores[i]) != VK_SUCCESS ||
+            vkCreateSemaphore(m_ctx->GetDevice(), &semaphoreInfo, nullptr, &m_renderFinishedSemaphores[i]) != VK_SUCCESS ||
+            vkCreateFence(m_ctx->GetDevice(), &fenceInfo, nullptr, &m_inFlightFences[i]) != VK_SUCCESS)
+            throw std::runtime_error("failed to create synchronization objects for a frame!");
+    }
 }
 
 void Renderer::recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex, std::vector<Drawable>& drawables)
@@ -107,11 +111,11 @@ void Renderer::recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t image
 
     for (const auto& [idx, drawable] : std::views::enumerate(drawables))
     {
-        VkBuffer vb = drawable.vertexBuffer->get();
+        VkBuffer vb = drawable.vertexBuffer->GetVkBuffer();
         VkDeviceSize ofs = 0;
 
         vkCmdBindVertexBuffers(commandBuffer, 0, 1, &vb, &ofs);
-        vkCmdBindIndexBuffer(commandBuffer, drawable.indexBuffer->get(), 0, VK_INDEX_TYPE_UINT32);
+        vkCmdBindIndexBuffer(commandBuffer, drawable.indexBuffer->GetVkBuffer(), 0, VK_INDEX_TYPE_UINT32);
         auto descSet = m_gfx.GetDescriptorSet(m_currentFrame, idx);
         vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_gfx.GetPipelineLayout(), 0, 1, &descSet, 0, nullptr);
         vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(drawable.indices.size()), 1, 0, 0, 0);

@@ -1,6 +1,5 @@
 #pragma once
 
-#include <array>
 #include <vector>
 #include <glm/glm.hpp>
 #include <vulkan/vulkan_core.h>
@@ -13,7 +12,7 @@ constexpr int MAX_FRAMES_IN_FLIGHT = 3;
 
 class GraphicsPipeline {
 public:
-    GraphicsPipeline(const std::shared_ptr<VulkanContext>& vk, VkRenderPass renderPass, size_t drawablesCount);
+    GraphicsPipeline(const std::shared_ptr<VulkanContext>& ctx, VkRenderPass renderPass, size_t drawablesCount);
     ~GraphicsPipeline();
 
     void UpdateUniformBuffers(VkExtent2D extent, uint32_t currentImage, std::vector<Drawable>& drawables);
@@ -27,17 +26,18 @@ public:
     [[nodiscard]] std::vector<VkDescriptorSet> GetDescriptorSets() const;
 
 private:
-    std::shared_ptr<VulkanContext> m_vk;
+    std::shared_ptr<VulkanContext> m_ctx;
     VkPipeline m_graphicsPipeline{};
     VkDescriptorPool m_descriptorPool{};
     VkDescriptorSetLayout m_descriptorSetLayout{};
     VkPipelineLayout m_pipelineLayout{};
 
     std::vector<std::shared_ptr<Buffer>> m_uniformBuffers;
-    std::vector<VkDescriptorSet> m_descriptorSets{};
+    std::vector<VkDescriptorSet> m_descriptorSets;
 
-    size_t m_drawablesCount = 0;
+    size_t m_drawablesCount;
 
+private:
     void createDescriptorPool();
     VkDescriptorSetLayoutBinding createDescriptorSetLayoutBinding(VkDescriptorType type, VkShaderStageFlags stageFlags, uint32_t binding);
     VkWriteDescriptorSet createWriteDescriptorBuffer(VkDescriptorType type, VkDescriptorSet dstSet, VkDescriptorBufferInfo* bufferInfo , uint32_t binding);

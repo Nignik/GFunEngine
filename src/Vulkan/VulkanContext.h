@@ -20,6 +20,9 @@ public:
     [[nodiscard]] VkQueue GetGraphicsQueue() const;
     [[nodiscard]] VkQueue GetPresentQueue() const;
 
+    VkCommandBuffer BeginSingleTimeCommands();
+    void EndSingleTimeCommands(VkCommandBuffer commandBuffer);
+
 private:
     VkInstance m_instance{};
     VkDevice m_device{};

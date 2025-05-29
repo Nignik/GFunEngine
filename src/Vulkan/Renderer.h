@@ -7,8 +7,6 @@
 #include "VulkanContext.h"
 #include "../Drawable.h"
 
-
-
 class Renderer {
 public:
     Renderer(SDL_Window* window, const std::shared_ptr<VulkanContext>& ctx);
@@ -24,14 +22,20 @@ private:
     Swapchain m_swapchain;
     GraphicsPipeline m_gfx;
 
-    std::vector<VkCommandBuffer> m_commandBuffers{};
+    TextureImage m_image;
 
-    std::vector<VkSemaphore> m_imageAvailableSemaphores{};
-    std::vector<VkSemaphore> m_renderFinishedSemaphores{};
-    std::vector<VkFence> m_inFlightFences{};
+    std::vector<VkCommandBuffer> m_commandBuffers;
 
-    uint32_t m_currentFrame = 0;
+    std::vector<VkSemaphore> m_imageAvailableSemaphores;
+    std::vector<VkSemaphore> m_renderFinishedSemaphores;
+    std::vector<VkFence> m_inFlightFences;
 
+    uint32_t m_currentFrame;
+
+private:
     void createCommandBuffers();
+    void createSyncObjects();
+    void createTextureImage(const std::filesystem::path& path);
     void recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex, std::vector<Drawable>& drawables);
+
 };

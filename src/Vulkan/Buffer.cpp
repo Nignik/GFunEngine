@@ -2,8 +2,10 @@
 
 #include <stdexcept>
 
-Buffer::Buffer(const std::shared_ptr<VulkanContext>& vk, VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties)
-    : m_vk(vk),
+#include "VulkanUtils.h"
+
+Buffer::Buffer(const std::shared_ptr<VulkanContext>& ctx, VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties)
+    : m_ctx(ctx),
     m_size(size)
 {
     VkBufferCreateInfo bufferInfo{};
@@ -12,21 +14,21 @@ Buffer::Buffer(const std::shared_ptr<VulkanContext>& vk, VkDeviceSize size, VkBu
     bufferInfo.usage = usage;
     bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
-    if (vkCreateBuffer(m_vk->GetDevice(), &bufferInfo, nullptr, &m_buffer) != VK_SUCCESS)
+    if (vkCreateBuffer(m_ctx->GetDevice(), &bufferInfo, nullptr, &m_buffer) != VK_SUCCESS)
         throw std::runtime_error("failed to create buffer!");
 
     VkMemoryRequirements memRequirements;
-    vkGetBufferMemoryRequirements(m_vk->GetDevice(), m_buffer, &memRequirements);
+    vkGetBufferMemoryRequirements(m_ctx->GetDevice(), m_buffer, &memRequirements);
 
     VkMemoryAllocateInfo allocInfo{};
     allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
     allocInfo.allocationSize = memRequirements.size;
-    allocInfo.memoryTypeIndex = findMemoryType(m_vk->GetPhysicalDevice(), memRequirements.memoryTypeBits, properties);
+    allocInfo.memoryTypeIndex = findMemoryType(m_ctx->GetPhysicalDevice(), memRequirements.memoryTypeBits, properties);
 
-    if (vkAllocateMemory(m_vk->GetDevice(), &allocInfo, nullptr, &m_memory) != VK_SUCCESS)
+    if (vkAllocateMemory(m_ctx->GetDevice(), &allocInfo, nullptr, &m_memory) != VK_SUCCESS)
         throw std::runtime_error("failed to allocate buffer memory!");
 
-    vkBindBufferMemory(m_vk->GetDevice(), m_buffer, m_memory, 0);
+    vkBindBufferMemory(m_ctx->GetDevice(), m_buffer, m_memory, 0);
 }
 
 Buffer::~Buffer()
@@ -49,20 +51,20 @@ Buffer& Buffer::operator=(Buffer&& other) noexcept
     return *this;
 }
 
-void Buffer::copyData(void* data)
+void Buffer::CopyData(void* data)
 {
     void* vkData;
-    vkMapMemory(m_vk->GetDevice(), m_memory, 0, m_size, 0, &vkData);
+    vkMapMemory(m_ctx->GetDevice(), m_memory, 0, m_size, 0, &vkData);
     memcpy(vkData, data, (size_t) m_size);
-    vkUnmapMemory(m_vk->GetDevice(), m_memory);
+    vkUnmapMemory(m_ctx->GetDevice(), m_memory);
 }
 
-VkDeviceSize Buffer::size() const
+VkDeviceSize Buffer::GetSize() const
 {
     return m_size;
 }
 
-VkBuffer Buffer::get() const
+VkBuffer Buffer::GetVkBuffer() const
 {
     return m_buffer;
 }
@@ -74,10 +76,10 @@ void* Buffer::GetMappedBuffer() const
 
 void Buffer::Map()
 {
-    vkMapMemory(m_vk->GetDevice(), m_memory, 0, m_size, 0, &m_mapped);
+    vkMapMemory(m_ctx->GetDevice(), m_memory, 0, m_size, 0, &m_mapped);
 }
 
-void Buffer::copyBuffer(VkQueue graphicsQueue, VkCommandPool commandPool, Buffer& srcBuffer)
+void Buffer::CopyBuffer(VkQueue graphicsQueue, VkCommandPool commandPool, Buffer& srcBuffer)
 {
     VkCommandBufferAllocateInfo allocInfo{};
     allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
@@ -86,7 +88,7 @@ void Buffer::copyBuffer(VkQueue graphicsQueue, VkCommandPool commandPool, Buffer
     allocInfo.commandBufferCount = 1;
 
     VkCommandBuffer commandBuffer;
-    vkAllocateCommandBuffers(m_vk->GetDevice(), &allocInfo, &commandBuffer);
+    vkAllocateCommandBuffers(m_ctx->GetDevice(), &allocInfo, &commandBuffer);
 
     VkCommandBufferBeginInfo beginInfo{};
     beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -108,13 +110,13 @@ void Buffer::copyBuffer(VkQueue graphicsQueue, VkCommandPool commandPool, Buffer
     vkQueueSubmit(graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE);
     vkQueueWaitIdle(graphicsQueue);
 
-    vkFreeCommandBuffers(m_vk->GetDevice(), commandPool, 1, &commandBuffer);
+    vkFreeCommandBuffers(m_ctx->GetDevice(), commandPool, 1, &commandBuffer);
 }
 
 void Buffer::cleanup() noexcept
 {
-    if (!m_vk) return;
-    VkDevice dev = m_vk->GetDevice();
+    if (!m_ctx) return;
+    VkDevice dev = m_ctx->GetDevice();
 
     if (m_mapped) {
         vkUnmapMemory(dev, m_memory);
@@ -132,7 +134,7 @@ void Buffer::cleanup() noexcept
 
 void Buffer::moveFrom(Buffer&& other) noexcept
 {
-    m_vk           = std::move(other.m_vk);
+    m_ctx           = std::move(other.m_ctx);
     m_buffer       = std::exchange(other.m_buffer,       VK_NULL_HANDLE);
     m_memory = std::exchange(other.m_memory, VK_NULL_HANDLE);
     m_size         = other.m_size;
@@ -140,14 +142,3 @@ void Buffer::moveFrom(Buffer&& other) noexcept
     other.m_mapped = nullptr;
 }
 
-uint32_t Buffer::findMemoryType(VkPhysicalDevice physicalDevice, uint32_t typeFilter, VkMemoryPropertyFlags properties)
-{
-    VkPhysicalDeviceMemoryProperties memProperties;
-    vkGetPhysicalDeviceMemoryProperties(physicalDevice, &memProperties);
-
-    for (uint32_t i = 0; i < memProperties.memoryTypeCount; i++)
-        if (typeFilter & (typeFilter & (1 << i)) && (memProperties.memoryTypes[i].propertyFlags & properties) == properties)
-            return i;
-
-    throw std::runtime_error("failed to find suitable memory type!");
-}

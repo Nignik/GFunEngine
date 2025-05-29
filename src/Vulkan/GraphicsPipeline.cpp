@@ -7,8 +7,8 @@
 #include "../utils.h"
 #include "VulkanContext.h"
 
-GraphicsPipeline::GraphicsPipeline(const std::shared_ptr<VulkanContext>& vk, VkRenderPass renderPass, size_t drawablesCount)
-    : m_vk(vk),
+GraphicsPipeline::GraphicsPipeline(const std::shared_ptr<VulkanContext>& ctx, VkRenderPass renderPass, size_t drawablesCount)
+    : m_ctx(ctx),
     m_drawablesCount(drawablesCount)
 {
     createDescriptorPool();
@@ -21,7 +21,7 @@ GraphicsPipeline::GraphicsPipeline(const std::shared_ptr<VulkanContext>& vk, VkR
 
 GraphicsPipeline::~GraphicsPipeline()
 {
-    VkDevice device = m_vk->GetDevice();
+    VkDevice device = m_ctx->GetDevice();
     vkDestroyPipeline(device, m_graphicsPipeline, nullptr);
     vkDestroyPipelineLayout(device, m_pipelineLayout, nullptr);
     vkDestroyDescriptorPool(device, m_descriptorPool, nullptr);
@@ -50,7 +50,7 @@ void GraphicsPipeline::createDescriptorPool()
     poolInfo.pPoolSizes = &poolSize;
     poolInfo.maxSets = totalSets;
 
-    if (vkCreateDescriptorPool(m_vk->GetDevice(), &poolInfo, nullptr, &m_descriptorPool) != VK_SUCCESS) {
+    if (vkCreateDescriptorPool(m_ctx->GetDevice(), &poolInfo, nullptr, &m_descriptorPool) != VK_SUCCESS) {
         throw std::runtime_error("failed to create descriptor pool!");
     }
 }
@@ -89,7 +89,7 @@ void GraphicsPipeline::createDescriptorSetLayout()
     layoutInfo.bindingCount = 1;
     layoutInfo.pBindings = &uboLayoutBinding;
 
-    if (vkCreateDescriptorSetLayout(m_vk->GetDevice(), &layoutInfo, nullptr, &m_descriptorSetLayout) != VK_SUCCESS)
+    if (vkCreateDescriptorSetLayout(m_ctx->GetDevice(), &layoutInfo, nullptr, &m_descriptorSetLayout) != VK_SUCCESS)
         throw std::runtime_error("failed to create descriptor set layout!");
 }
 
@@ -100,7 +100,7 @@ void GraphicsPipeline::createPipelineLayout()
     pipelineLayoutInfo.setLayoutCount = 1;
     pipelineLayoutInfo.pSetLayouts = &m_descriptorSetLayout;
 
-    if (vkCreatePipelineLayout(m_vk->GetDevice(), &pipelineLayoutInfo, nullptr, &m_pipelineLayout) != VK_SUCCESS) {
+    if (vkCreatePipelineLayout(m_ctx->GetDevice(), &pipelineLayoutInfo, nullptr, &m_pipelineLayout) != VK_SUCCESS) {
         throw std::runtime_error("failed to create pipeline layout!");
     }
 }
@@ -112,7 +112,7 @@ void GraphicsPipeline::createUniformBuffers(size_t drawablesCount)
     m_uniformBuffers.reserve(MAX_FRAMES_IN_FLIGHT * drawablesCount);
     for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT * drawablesCount; i++)
     {
-        m_uniformBuffers.push_back(std::make_shared<Buffer>(m_vk, bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT));
+        m_uniformBuffers.push_back(std::make_shared<Buffer>(m_ctx, bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT));
         m_uniformBuffers.back()->Map();
     }
 }
@@ -129,13 +129,13 @@ void GraphicsPipeline::createDescriptorSets(size_t drawablesCount)
     allocInfo.pSetLayouts = layouts.data();
 
     m_descriptorSets.resize(count);
-    if (vkAllocateDescriptorSets(m_vk->GetDevice(), &allocInfo, m_descriptorSets.data()) != VK_SUCCESS) {
+    if (vkAllocateDescriptorSets(m_ctx->GetDevice(), &allocInfo, m_descriptorSets.data()) != VK_SUCCESS) {
         throw std::runtime_error("failed to allocate descriptor sets!");
     }
 
     for (size_t i = 0; i < count; i++) {
         VkDescriptorBufferInfo bufferInfo{};
-        bufferInfo.buffer = m_uniformBuffers[i]->get(); //TODO: Change the getter naming
+        bufferInfo.buffer = m_uniformBuffers[i]->GetVkBuffer(); //TODO: Change the getter naming
         bufferInfo.offset = 0;
         bufferInfo.range = sizeof(UniformBufferObject);
 
@@ -148,7 +148,7 @@ void GraphicsPipeline::createDescriptorSets(size_t drawablesCount)
         descriptorWrite.descriptorCount = 1;
         descriptorWrite.pBufferInfo = &bufferInfo;
 
-        vkUpdateDescriptorSets(m_vk->GetDevice(), 1, &descriptorWrite, 0, nullptr);
+        vkUpdateDescriptorSets(m_ctx->GetDevice(), 1, &descriptorWrite, 0, nullptr);
     }
 }
 
@@ -250,11 +250,11 @@ auto vertShaderCode = readFile("../shaders/vertex/first_triangle.vert.spv");
     pipelineInfo.subpass = 0;
     pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
 
-    if (vkCreateGraphicsPipelines(m_vk->GetDevice(), VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &m_graphicsPipeline) != VK_SUCCESS)
+    if (vkCreateGraphicsPipelines(m_ctx->GetDevice(), VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &m_graphicsPipeline) != VK_SUCCESS)
         throw std::runtime_error("failed to create graphics pipeline!");
 
-    vkDestroyShaderModule(m_vk->GetDevice(), fragShaderModule, nullptr);
-    vkDestroyShaderModule(m_vk->GetDevice(), vertShaderModule, nullptr);
+    vkDestroyShaderModule(m_ctx->GetDevice(), fragShaderModule, nullptr);
+    vkDestroyShaderModule(m_ctx->GetDevice(), vertShaderModule, nullptr);
 }
 
 VkShaderModule GraphicsPipeline::createShaderModule(const std::vector<char>& code)
@@ -266,7 +266,7 @@ VkShaderModule GraphicsPipeline::createShaderModule(const std::vector<char>& cod
     };
 
     VkShaderModule shaderModule;
-    if (vkCreateShaderModule(m_vk->GetDevice(), &createInfo, nullptr, &shaderModule) != VK_SUCCESS)
+    if (vkCreateShaderModule(m_ctx->GetDevice(), &createInfo, nullptr, &shaderModule) != VK_SUCCESS)
         throw std::runtime_error("failed to create shader module!");
 
     return shaderModule;

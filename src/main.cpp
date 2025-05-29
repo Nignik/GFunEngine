@@ -5,15 +5,16 @@
 #include "Window.h"
 #include "RendererSystem.h"
 
-std::vector<Vertex> vertices = {
-    {{-0.5f, 0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}}, // 0
-    {{0.5f, 0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}}, // 1
-    {{0.5f, 0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}}, // 2
-    {{-0.5f, 0.5f, 0.5f}, {1.0f, 1.0f, 1.0f}}, // 3
-    {{-0.5f, -0.5f, -0.5f}, {1.0f, 1.0f, 1.0f}}, // 4
-    {{0.5f, -0.5f, -0.5f}, {1.0f, 1.0f, 1.0f}}, // 5
-    {{0.5f, -0.5f, 0.5f}, {1.0f, 1.0f, 1.0f}}, // 6
-    {{-0.5f, -0.5f, 0.5f}, {1.0f, 1.0f, 1.0f}} // 7
+const std::vector<Vertex> vertices = {
+    {{-0.5f,  0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}, {0.0f, 1.0f}},  // 0: TL-front
+    {{ 0.5f,  0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}, {1.0f, 1.0f}},  // 1: TR-front
+    {{ 0.5f,  0.5f,  0.5f}, {0.0f, 0.0f, 1.0f}, {1.0f, 0.0f}},  // 2: TR-back
+    {{-0.5f,  0.5f,  0.5f}, {1.0f, 1.0f, 1.0f}, {0.0f, 0.0f}},  // 3: TL-back
+
+    {{-0.5f, -0.5f, -0.5f}, {1.0f, 1.0f, 1.0f}, {0.0f, 1.0f}},  // 4: BL-front
+    {{ 0.5f, -0.5f, -0.5f}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}},  // 5: BR-front
+    {{ 0.5f, -0.5f,  0.5f}, {1.0f, 1.0f, 1.0f}, {1.0f, 0.0f}},  // 6: BR-back
+    {{-0.5f, -0.5f,  0.5f}, {1.0f, 1.0f, 1.0f}, {0.0f, 0.0f}}   // 7: BL-back
 };
 
 std::vector<uint32_t> indices = {
@@ -40,13 +41,13 @@ Drawable createDrawable(std::shared_ptr<VulkanContext>& ctx, std::vector<Vertex>
     // Create vertex buffer
     auto vertexBuffer = std::make_shared<Buffer>(ctx, vertexBufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
     Buffer vertexStagingBuffer(ctx, vertexBufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-    vertexStagingBuffer.copyData(vertices.data());
-    vertexBuffer->copyBuffer(ctx->GetGraphicsQueue(), ctx->GetCommandPool(), vertexStagingBuffer);
+    vertexStagingBuffer.CopyData(vertices.data());
+    vertexBuffer->CopyBuffer(ctx->GetGraphicsQueue(), ctx->GetCommandPool(), vertexStagingBuffer);
 
     auto indexBuffer = std::make_shared<Buffer>(ctx, indexBufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
     Buffer indexStagingBuffer(ctx, indexBufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-    indexStagingBuffer.copyData(indices.data());
-    indexBuffer->copyBuffer(ctx->GetGraphicsQueue(), ctx->GetCommandPool(), indexStagingBuffer);
+    indexStagingBuffer.CopyData(indices.data());
+    indexBuffer->CopyBuffer(ctx->GetGraphicsQueue(), ctx->GetCommandPool(), indexStagingBuffer);
 
     return {std::move(vertices), std::move(indices), vertexBuffer, indexBuffer};
 }

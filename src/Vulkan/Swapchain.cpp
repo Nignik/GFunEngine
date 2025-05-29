@@ -4,20 +4,21 @@
 #include <stdexcept>
 #include <SDL3/SDL_events.h>
 
-Swapchain::Swapchain(const std::shared_ptr<VulkanContext>& vk, SDL_Window* window)
-    : m_vk(vk),
+Swapchain::Swapchain(const std::shared_ptr<VulkanContext>& ctx, SDL_Window* window)
+    : m_ctx(ctx),
     m_window(window)
 {
     createSwapchain();
     createRenderPass();
     createImageViews();
     createFramebuffers();
+    createDepthBuffer();
 }
 
 Swapchain::~Swapchain()
 {
     cleanupSwapchain();
-    vkDestroyRenderPass(m_vk->GetDevice(), m_renderPass, nullptr);
+    vkDestroyRenderPass(m_ctx->GetDevice(), m_renderPass, nullptr);
 }
 
 void Swapchain::RecreateSwapchain()
@@ -26,7 +27,7 @@ void Swapchain::RecreateSwapchain()
         SDL_Event event;
         SDL_WaitEvent(&event);
     }
-    vkDeviceWaitIdle(m_vk->GetDevice());
+    vkDeviceWaitIdle(m_ctx->GetDevice());
 
     cleanupSwapchain();
 
@@ -51,7 +52,7 @@ void Swapchain::SetResized(bool resized)
 
 void Swapchain::createSwapchain()
 {
-    SwapChainSupportDetails swapChainSupport = querySwapChainSupport(m_vk->GetPhysicalDevice(), m_vk->GetSurface());
+    SwapChainSupportDetails swapChainSupport = querySwapChainSupport(m_ctx->GetPhysicalDevice(), m_ctx->GetSurface());
 
     auto [format, colorSpace] = chooseSwapSurfaceFormat(swapChainSupport.formats);
     m_imageFormat = format;
@@ -66,7 +67,7 @@ void Swapchain::createSwapchain()
 
     VkSwapchainCreateInfoKHR createInfo{};
     createInfo.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
-    createInfo.surface = m_vk->GetSurface();
+    createInfo.surface = m_ctx->GetSurface();
 
     createInfo.minImageCount = imageCount;
     createInfo.imageFormat = m_imageFormat;
@@ -75,7 +76,7 @@ void Swapchain::createSwapchain()
     createInfo.imageArrayLayers = 1;
     createInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 
-    QueueFamilyIndices indices = findQueueFamilies(m_vk->GetPhysicalDevice(), m_vk->GetSurface());
+    QueueFamilyIndices indices = findQueueFamilies(m_ctx->GetPhysicalDevice(), m_ctx->GetSurface());
     uint32_t queueFamilyIndices[] = {indices.graphicsFamily.value(), indices.presentFamily.value()};
 
     if (indices.graphicsFamily != indices.presentFamily) {
@@ -93,7 +94,7 @@ void Swapchain::createSwapchain()
 
     createInfo.oldSwapchain = VK_NULL_HANDLE;
 
-    if (vkCreateSwapchainKHR(m_vk->GetDevice(), &createInfo, nullptr, &m_swapchain) != VK_SUCCESS)
+    if (vkCreateSwapchainKHR(m_ctx->GetDevice(), &createInfo, nullptr, &m_swapchain) != VK_SUCCESS)
         throw std::runtime_error("failed to create swap chain!");
 }
 
@@ -135,7 +136,7 @@ void Swapchain::createRenderPass()
     renderPassInfo.dependencyCount = 1;
     renderPassInfo.pDependencies = &dependency;
 
-    if (vkCreateRenderPass(m_vk->GetDevice(), &renderPassInfo, nullptr, &m_renderPass) != VK_SUCCESS) {
+    if (vkCreateRenderPass(m_ctx->GetDevice(), &renderPassInfo, nullptr, &m_renderPass) != VK_SUCCESS) {
         throw std::runtime_error("failed to create render pass!");
     }
 }
@@ -143,9 +144,9 @@ void Swapchain::createRenderPass()
 void Swapchain::createImageViews()
 {
     uint32_t imageCount = 0;
-    vkGetSwapchainImagesKHR(m_vk->GetDevice(), m_swapchain, &imageCount, nullptr);
+    vkGetSwapchainImagesKHR(m_ctx->GetDevice(), m_swapchain, &imageCount, nullptr);
     m_images.resize(imageCount);
-    vkGetSwapchainImagesKHR(m_vk->GetDevice(), m_swapchain, &imageCount, m_images.data());
+    vkGetSwapchainImagesKHR(m_ctx->GetDevice(), m_swapchain, &imageCount, m_images.data());
 
     // Create Swapchain image views
     m_imageViews.resize(m_images.size());
@@ -166,7 +167,7 @@ void Swapchain::createImageViews()
         createInfo.subresourceRange.baseArrayLayer = 0;
         createInfo.subresourceRange.layerCount = 1;
 
-        if (vkCreateImageView(m_vk->GetDevice(), &createInfo, nullptr, &m_imageViews[i]) != VK_SUCCESS)
+        if (vkCreateImageView(m_ctx->GetDevice(), &createInfo, nullptr, &m_imageViews[i]) != VK_SUCCESS)
             throw std::runtime_error("failed to create image views!");
     }
 }
@@ -189,15 +190,20 @@ void Swapchain::createFramebuffers()
         framebufferInfo.height = m_extent.height;
         framebufferInfo.layers = 1;
 
-        if (vkCreateFramebuffer(m_vk->GetDevice(), &framebufferInfo, nullptr, &m_framebuffers[i]) != VK_SUCCESS) {
+        if (vkCreateFramebuffer(m_ctx->GetDevice(), &framebufferInfo, nullptr, &m_framebuffers[i]) != VK_SUCCESS) {
             throw std::runtime_error("failed to create framebuffer!");
         }
     }
 }
 
+void Swapchain::createDepthBuffer()
+{
+    VkFormat depthFormat = VK_FORMAT_D32_SFLOAT;
+}
+
 void Swapchain::cleanupSwapchain()
 {
-    VkDevice device = m_vk->GetDevice();
+    VkDevice device = m_ctx->GetDevice();
 
     for (auto framebuffer : m_framebuffers)
         vkDestroyFramebuffer(device, framebuffer, nullptr);
