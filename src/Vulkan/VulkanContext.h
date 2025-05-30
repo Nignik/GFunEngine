@@ -19,6 +19,7 @@ public:
     [[nodiscard]] VkCommandPool GetCommandPool() const;
     [[nodiscard]] VkQueue GetGraphicsQueue() const;
     [[nodiscard]] VkQueue GetPresentQueue() const;
+    [[nodiscard]] VkPhysicalDeviceProperties GetGpuProperties() const;
 
     VkCommandBuffer BeginSingleTimeCommands();
     void EndSingleTimeCommands(VkCommandBuffer commandBuffer);

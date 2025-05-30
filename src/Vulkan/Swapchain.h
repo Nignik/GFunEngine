@@ -33,15 +33,16 @@ private:
 
     std::vector<VkImage> m_images;
     std::vector<VkImageView> m_imageViews;
-	std::vector<VkFramebuffer> m_framebuffers;
+	//std::vector<TextureImage> m_textureImages;
+	//std::vector<VkImageView> m_textureImageViews;
+	TextureImage m_textureImage;
+	VkImageView m_textureImageView;
 
-	VkImage m_depthImage{};
-	VkDeviceMemory depthImageMemory{};
-	VkImageView depthImageView{};
+	std::vector<VkFramebuffer> m_framebuffers;
 
     VkFormat m_imageFormat{};
     VkExtent2D m_extent;
-    uint32_t m_currentFrame = 0;
+    uint32_t m_currentFrame;
     bool m_resized = false;
 
 private:
@@ -50,6 +51,7 @@ private:
 	void createImageViews();
 	void createFramebuffers();
 	void createDepthBuffer();
+	VkImageView createImageView(VkImage image, VkFormat format);
 
 	void cleanupSwapchain();
 

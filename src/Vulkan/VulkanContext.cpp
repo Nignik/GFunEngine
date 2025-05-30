@@ -74,6 +74,11 @@ VkQueue VulkanContext::GetPresentQueue() const
     return m_presentQueue;
 }
 
+VkPhysicalDeviceProperties VulkanContext::GetGpuProperties() const
+{
+    return m_gpuProperties;
+}
+
 void VulkanContext::createInstance()
 {
     // Setup validation layers
@@ -241,7 +246,10 @@ bool VulkanContext::isDeviceSuitable(VkPhysicalDevice device)
         swapChainAdequate = !swapChainSupport.formats.empty() && !swapChainSupport.presentModes.empty();
     }
 
-    return indices.isComplete() && extensionsSupported && swapChainAdequate;
+    VkPhysicalDeviceFeatures supportedFeatures;
+    vkGetPhysicalDeviceFeatures(device, &supportedFeatures);
+
+    return indices.isComplete() && extensionsSupported && swapChainAdequate && supportedFeatures.samplerAnisotropy;
 }
 
 bool VulkanContext::checkDeviceExtensionsSupport(VkPhysicalDevice device)
