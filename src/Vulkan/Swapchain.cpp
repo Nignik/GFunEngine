@@ -8,20 +8,24 @@
 Swapchain::Swapchain(const std::shared_ptr<VulkanContext>& ctx, SDL_Window* window)
     : m_ctx(ctx),
     m_window(window),
-    m_textureImage(ctx, "C:/dev/GameEngines/GFunEngine/resources/statue.jpg"),
     m_extent{},
     m_currentFrame{0}
 {
     createSwapchain();
     createRenderPass();
+
+    m_textureImage.emplace(ctx, "C:/dev/GameEngines/GFunEngine/resources/statue.jpg"),
+    m_textureImageView = createImageView(m_textureImage->GetImage(), VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT);
+    m_depthImage.emplace(ctx, m_extent.width, m_extent.height);
+
     createImageViews();
     createFramebuffers();
-    createDepthBuffer();
 }
 
 Swapchain::~Swapchain()
 {
     cleanupSwapchain();
+    vkDestroyImageView(m_ctx->GetDevice(), m_textureImageView, nullptr);
     vkDestroyRenderPass(m_ctx->GetDevice(), m_renderPass, nullptr);
 }
 
@@ -36,6 +40,7 @@ void Swapchain::RecreateSwapchain()
     cleanupSwapchain();
 
     createSwapchain();
+    m_depthImage.emplace(m_ctx, m_extent.width, m_extent.height);
     createImageViews();
     createFramebuffers();
 }
@@ -48,6 +53,9 @@ std::vector<VkFramebuffer> Swapchain::GetFramebuffers() const { return m_framebu
 VkExtent2D Swapchain::GetExtent() const { return m_extent; }
 bool Swapchain::IsResized() const { return m_resized; }
 VkImageView Swapchain::GetImageView(size_t idx) const { return m_imageViews[idx]; }
+VkImage Swapchain::GetTextureImage() const { return m_textureImage->GetImage(); }
+VkImageView Swapchain::GetTextureImageView() const { return m_textureImageView; }
+VkSampler Swapchain::GetTextureImageSampler() const { return m_textureImage->GetSampler(); }
 
 void Swapchain::SetResized(bool resized)
 {
@@ -118,23 +126,38 @@ void Swapchain::createRenderPass()
     colorAttachmentRef.attachment = 0;
     colorAttachmentRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
+    VkAttachmentDescription depthAttachment{};
+    depthAttachment.format = VK_FORMAT_D32_SFLOAT;
+    depthAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
+    depthAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+    depthAttachment.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+    depthAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+    depthAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+    depthAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    depthAttachment.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+
+    VkAttachmentReference depthAttachmentRef{};
+    depthAttachmentRef.attachment = 1;
+    depthAttachmentRef.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+
     VkSubpassDescription subpass{};
     subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
     subpass.colorAttachmentCount = 1;
     subpass.pColorAttachments = &colorAttachmentRef;
+    subpass.pDepthStencilAttachment = &depthAttachmentRef;
 
     VkSubpassDependency dependency{};
     dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
     dependency.dstSubpass = 0;
-    dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-    dependency.srcAccessMask = 0;
-    dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-    dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+    dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+    dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+    dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
 
+    std::array<VkAttachmentDescription, 2> attachments = {colorAttachment, depthAttachment};
     VkRenderPassCreateInfo renderPassInfo{};
     renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-    renderPassInfo.attachmentCount = 1;
-    renderPassInfo.pAttachments = &colorAttachment;
+    renderPassInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
+    renderPassInfo.pAttachments = attachments.data();
     renderPassInfo.subpassCount = 1;
     renderPassInfo.pSubpasses = &subpass;
     renderPassInfo.dependencyCount = 1;
@@ -155,11 +178,11 @@ void Swapchain::createImageViews()
     // Create Swapchain image views
     m_imageViews.resize(m_images.size());
     for (size_t i = 0; i < m_images.size(); i++)
-        m_imageViews[i] = createImageView(m_images[i], m_imageFormat);
+        m_imageViews[i] = createImageView(m_images[i], m_imageFormat, VK_IMAGE_ASPECT_COLOR_BIT);
     //for (auto&& [imageView, image] : std::views::zip(m_imageViews, m_images))
      //   imageView = createImageView(image, m_imageFormat);
 
-    m_textureImageView = createImageView(m_textureImage.GetImage(), VK_FORMAT_R8G8B8A8_SRGB);
+    m_depthImageView = createImageView(m_depthImage->GetImage(), VK_FORMAT_D32_SFLOAT, VK_IMAGE_ASPECT_DEPTH_BIT);
 
     //for (auto&& [textureImageView, textureImage] : std::views::zip(m_textureImageViews, m_textureImages))
      //   textureImageView = createImageView(textureImage.GetImage(), VK_FORMAT_R8G8B8A8_SRGB);
@@ -170,15 +193,16 @@ void Swapchain::createFramebuffers()
     m_framebuffers.resize(m_imageViews.size());
 
     for (size_t i = 0; i < m_imageViews.size(); i++) {
-        VkImageView attachments[] = {
-            m_imageViews[i]
+        std::array attachments{
+            m_imageViews[i],
+            m_depthImageView
         };
 
         VkFramebufferCreateInfo framebufferInfo{};
         framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
         framebufferInfo.renderPass = m_renderPass;
-        framebufferInfo.attachmentCount = 1;
-        framebufferInfo.pAttachments = attachments;
+        framebufferInfo.attachmentCount = attachments.size();
+        framebufferInfo.pAttachments = attachments.data();
         framebufferInfo.width = m_extent.width;
         framebufferInfo.height = m_extent.height;
         framebufferInfo.layers = 1;
@@ -189,19 +213,14 @@ void Swapchain::createFramebuffers()
     }
 }
 
-void Swapchain::createDepthBuffer()
-{
-    VkFormat depthFormat = VK_FORMAT_D32_SFLOAT;
-}
-
-VkImageView Swapchain::createImageView(VkImage image, VkFormat format)
+VkImageView Swapchain::createImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags)
 {
     VkImageViewCreateInfo viewInfo{};
     viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
     viewInfo.image = image;
     viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
     viewInfo.format = format;
-    viewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    viewInfo.subresourceRange.aspectMask = aspectFlags;
     viewInfo.subresourceRange.baseMipLevel = 0;
     viewInfo.subresourceRange.levelCount = 1;
     viewInfo.subresourceRange.baseArrayLayer = 0;
@@ -225,7 +244,7 @@ void Swapchain::cleanupSwapchain()
     for (auto imageView : m_imageViews)
         vkDestroyImageView(device, imageView, nullptr);
 
-    vkDestroyImageView(device, m_textureImageView, nullptr);
+    vkDestroyImageView(device, m_depthImageView, nullptr);
 
     vkDestroySwapchainKHR(device, m_swapchain, nullptr);
 }

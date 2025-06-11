@@ -6,13 +6,14 @@
 
 #include "../Drawable.h"
 #include "Buffer.h"
+#include "Swapchain.h"
 #include "VulkanContext.h"
 
 constexpr int MAX_FRAMES_IN_FLIGHT = 3;
 
 class GraphicsPipeline {
 public:
-    GraphicsPipeline(const std::shared_ptr<VulkanContext>& ctx, VkRenderPass renderPass, size_t drawablesCount);
+    GraphicsPipeline(const std::shared_ptr<VulkanContext>& ctx, Swapchain& swapchain, size_t drawablesCount);
     ~GraphicsPipeline();
 
     void UpdateUniformBuffers(VkExtent2D extent, uint32_t currentImage, std::vector<Drawable>& drawables);
@@ -44,7 +45,7 @@ private:
     void createDescriptorSetLayout();
     void createPipelineLayout();
     void createUniformBuffers(size_t drawablesCount);
-    void createDescriptorSets(size_t drawablesCount);
+    void createDescriptorSets(Swapchain& swapchain, size_t drawablesCount);
     void createGraphicsPipeline(VkRenderPass renderPass);
     VkShaderModule createShaderModule(const std::vector<char>& code);
 

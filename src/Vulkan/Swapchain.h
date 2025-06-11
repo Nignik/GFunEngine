@@ -5,6 +5,8 @@
 #include "VulkanContext.h"
 #include "VulkanUtils.h"
 #include "TextureImage.h"
+#include "Image.h"
+#include "DepthImage.h"
 
 class Swapchain {
 public:
@@ -21,8 +23,16 @@ public:
 	[[nodiscard]] VkExtent2D GetExtent() const;
 	[[nodiscard]] bool IsResized() const;
 	[[nodiscard]] VkImageView GetImageView(size_t idx) const;
+	[[nodiscard]] VkImage GetTextureImage() const;
+	[[nodiscard]] VkImageView GetTextureImageView() const;
+	[[nodiscard]] VkSampler GetTextureImageSampler() const;
 
 	void SetResized(bool resized);
+
+	Swapchain(Swapchain&& other) = delete;
+	Swapchain& operator=(Swapchain&& other) = delete;
+	Swapchain(const Swapchain&) = delete;
+	Swapchain& operator=(const Swapchain&) = delete;
 
 private:
 	std::shared_ptr<VulkanContext> m_ctx;
@@ -35,8 +45,11 @@ private:
     std::vector<VkImageView> m_imageViews;
 	//std::vector<TextureImage> m_textureImages;
 	//std::vector<VkImageView> m_textureImageViews;
-	TextureImage m_textureImage;
+	std::optional<TextureImage> m_textureImage;
 	VkImageView m_textureImageView;
+
+	std::optional<DepthImage> m_depthImage;
+	VkImageView m_depthImageView;
 
 	std::vector<VkFramebuffer> m_framebuffers;
 
@@ -50,8 +63,7 @@ private:
 	void createRenderPass();
 	void createImageViews();
 	void createFramebuffers();
-	void createDepthBuffer();
-	VkImageView createImageView(VkImage image, VkFormat format);
+	VkImageView createImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags);
 
 	void cleanupSwapchain();
 
