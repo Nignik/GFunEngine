@@ -7,6 +7,7 @@
 #include "Swapchain.h"
 #include "../utils.h"
 #include "VulkanContext.h"
+#include "../Camera/Camera.h"
 
 GraphicsPipeline::GraphicsPipeline(const std::shared_ptr<VulkanContext>& ctx, Swapchain& swapchain, size_t drawablesCount)
     : m_ctx(ctx),
@@ -226,7 +227,7 @@ void GraphicsPipeline::createGraphicsPipeline(VkRenderPass renderPass)
     rasterizer.polygonMode = VK_POLYGON_MODE_FILL;
     rasterizer.lineWidth = 1.0f;
     rasterizer.cullMode = VK_CULL_MODE_BACK_BIT;
-    rasterizer.frontFace = VK_FRONT_FACE_CLOCKWISE;
+    rasterizer.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
     rasterizer.depthBiasEnable = VK_FALSE;
 
     VkPipelineMultisampleStateCreateInfo multisampling{};
@@ -322,7 +323,9 @@ void GraphicsPipeline::UpdateUniformBuffers(VkExtent2D extent, uint32_t currentI
         int idx = currentImage * m_drawablesCount + i;
         auto ubo = drawables[i].ubo;
 
-        ubo.model = glm::rotate(ubo.model, time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+        drawables[i].transform.Rotate(glm::vec3(0.f, 0.f, 1.f) * time);
+
+        ubo.model = glm::rotate(drawables[i].transform.GetModel(), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
         ubo.view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
         ubo.proj = glm::perspective(glm::radians(45.0f), extent.width / (float) extent.height, 0.1f, 10.0f);
         ubo.proj[1][1] *= -1;

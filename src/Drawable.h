@@ -1,4 +1,5 @@
 #pragma once
+#include "Transform.h"
 #include "Vulkan/Buffer.h"
 #include "Vulkan/VulkanUtils.h"
 
@@ -8,4 +9,5 @@ struct Drawable {
     std::shared_ptr<Buffer> vertexBuffer;
     std::shared_ptr<Buffer> indexBuffer;
     UniformBufferObject ubo;
+    Transform transform;
 };
