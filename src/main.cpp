@@ -78,7 +78,7 @@ int main() {
 	        auto entt = ecs.CreateEntity();
 	        auto drawable = createDrawable(vk, vertices, indices);
 	        drawable.ubo = UniformBufferObject(model, glm::mat4{}, glm::mat4{});
-	    	drawable.transform = Transform({-1.0f, -1.0f, 0.0f}, {0.f, 0.f, 0.f}, {1.f, 1.f, 1.f});
+	    	drawable.transform = Transform({0.0f, 0.0f, 0.0f}, {0.f, 0.f, 0.f}, {1.f, 1.f, 1.f});
 	        ecs.AddComponents(entt, std::move(drawable));
 	    }
 

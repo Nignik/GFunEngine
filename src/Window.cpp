@@ -13,7 +13,7 @@ Window::Window()
     if (!SDL_Init(SDL_INIT_VIDEO))
         throw std::runtime_error("Failed to initialize SDL");
 
-    m_window = SDL_CreateWindow("GFunEngine", 800, 600, SDL_WINDOW_RESIZABLE | SDL_WINDOW_VULKAN);
+    m_window = SDL_CreateWindow("GFunEngine", 1600, 900, SDL_WINDOW_RESIZABLE | SDL_WINDOW_VULKAN);
     if (!m_window)
         throw std::runtime_error(std::string("SDL_CreateWindow failed: ") + SDL_GetError());
 

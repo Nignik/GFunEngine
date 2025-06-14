@@ -6,10 +6,16 @@
 
 class Camera {
 public:
-    Camera(glm::vec3 pos, glm::vec3 rotation);
+    Camera(Transform&& transform);
+
+    glm::mat4 GetPerspectiveProjection();
+    glm::mat4 GetOrthographicProjection(float halfWidth, float halfHeight);
+    Transform GetTransform();
 
 private:
-    glm::vec4 m_pos;
-    glm::vec4 m_up;
+    Transform m_transform;
+    float m_near;
+    float m_far;
+    float m_fovx;
+    float m_aspectRatio;
 };
-

@@ -11,13 +11,21 @@ public:
     void Rotate(glm::vec3 vector);
     void Scale(glm::vec3 vector);
 
+    glm::vec3 GetPosition() const;
+    glm::vec3 GetRotation() const;
+    glm::vec3 GetSize() const;
     glm::mat4 GetModel();
 
-public:
-    glm::vec3 position;
-    glm::vec3 rotation;
-    glm::vec3 scale;
+private:
+    glm::vec3 m_position;
+    glm::vec3 m_rotation;
+    glm::vec3 m_size;
 
 private:
-    glm::mat4 rotateEuler(glm::mat4& model);
+    glm::mat4 translate(glm::mat4& model, const glm::vec3& vector);
+    glm::mat4 translate(glm::mat4&& model, const glm::vec3& vector);
+    glm::mat4 rotateEuler(glm::mat4& model, const glm::vec3& vector);
+    glm::mat4 rotateEuler(glm::mat4&& model, const glm::vec3& vector);
+    glm::mat4 scale(glm::mat4& model, const glm::vec3& vector);
+    glm::mat4 scale(glm::mat4&& model, const glm::vec3& vector);
 };
