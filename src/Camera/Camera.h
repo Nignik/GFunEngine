@@ -8,9 +8,12 @@ class Camera {
 public:
     Camera(Transform&& transform);
 
-    glm::mat4 GetPerspectiveProjection();
-    glm::mat4 GetOrthographicProjection(float halfWidth, float halfHeight);
-    Transform GetTransform();
+    glm::mat4 GetPerspectiveProjection() const;
+    glm::mat4 GetOrthographicProjection(float halfWidth, float halfHeight) const;
+    glm::mat4 GetView() const;
+    Transform GetTransform() const;
+
+    void LookAt(const glm::vec3& point);
 
 private:
     Transform m_transform;

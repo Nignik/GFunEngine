@@ -1,5 +1,6 @@
 #pragma once
 #include <glm/glm.hpp>
+#include <glm/detail/type_quat.hpp>
 
 class Transform 
 {
@@ -7,25 +8,26 @@ public:
     Transform();
     Transform(const glm::vec3& position, const glm::vec3& rotation, const glm::vec3& scale);
 
-    void Translate(glm::vec3 vector);
-    void Rotate(glm::vec3 vector);
-    void Scale(glm::vec3 vector);
+    void Translate(const glm::vec3& vector);
+    void Rotate(const glm::quat& q);
+    void Scale(const glm::vec3& vector);
 
     glm::vec3 GetPosition() const;
-    glm::vec3 GetRotation() const;
+    glm::quat GetRotation() const;
     glm::vec3 GetSize() const;
-    glm::mat4 GetModel();
+    glm::mat4 GetModel() const;
+
+    void SetPosition(const glm::vec3& position);
+    void SetRotation(const glm::quat& q);
+    void SetSize(const glm::vec3& size);
 
 private:
     glm::vec3 m_position;
-    glm::vec3 m_rotation;
+    glm::quat m_rotation;
     glm::vec3 m_size;
 
 private:
-    glm::mat4 translate(glm::mat4& model, const glm::vec3& vector);
-    glm::mat4 translate(glm::mat4&& model, const glm::vec3& vector);
-    glm::mat4 rotateEuler(glm::mat4& model, const glm::vec3& vector);
-    glm::mat4 rotateEuler(glm::mat4&& model, const glm::vec3& vector);
-    glm::mat4 scale(glm::mat4& model, const glm::vec3& vector);
-    glm::mat4 scale(glm::mat4&& model, const glm::vec3& vector);
+    static glm::mat4 translate(glm::mat4&& model, const glm::vec3& vector);
+    static glm::mat4 rotate(glm::mat4&& model, const glm::quat q);
+    static glm::mat4 scale(glm::mat4&& model, const glm::vec3& vector);
 };

@@ -318,18 +318,19 @@ void GraphicsPipeline::UpdateUniformBuffers(VkExtent2D extent, uint32_t currentI
     auto currentTime = std::chrono::high_resolution_clock::now();
     float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
 
-    Camera camera(Transform{{0.f, -10.f, 0.f}, {0.f, 0.f, 0.f}, {0.f, 0.f, 0.f}});
+    Camera camera(Transform{{0.f, -10.f, 0.f}, {0.f, 0.f, 0.f}, {1.f, 1.f, 1.f}});
+    camera.LookAt(glm::vec3{0.f, 0.f, 0.f});
+
     for (int i = 0; i < m_drawablesCount; i++)
     {
         int idx = currentImage * m_drawablesCount + i;
         auto ubo = drawables[i].ubo;
 
         // Rotate for fun
-        drawables[i].transform.Rotate(glm::vec3(0.f, 0.f, 1.f) * time);
+        drawables[i].transform.Rotate(glm::vec3(0.f, 1.f, 0.f) * time);
 
         ubo.model = drawables[i].transform.GetModel();
-        // camera transforms
-        ubo.view = glm::lookAt(camera.GetTransform().GetPosition(), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+        ubo.view = camera.GetView();
         ubo.proj = camera.GetPerspectiveProjection();
 
         memcpy(m_uniformBuffers[idx]->GetMappedBuffer(), &ubo, sizeof(ubo));

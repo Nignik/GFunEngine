@@ -1,9 +1,7 @@
 #include "Transform.h"
 
-#include <glm/ext/matrix_transform.hpp>
-
-#include "Vulkan/Buffer.h"
-#include "Vulkan/Buffer.h"
+#define GLM_ENABLE_EXPERIMENTAL
+#include <glm/gtx/quaternion.hpp>
 
 Transform::Transform()
     : m_position{},
@@ -19,36 +17,29 @@ Transform::Transform(const glm::vec3& position, const glm::vec3& rotation, const
 {
 }
 
-void Transform::Translate(glm::vec3 vector)
+void Transform::Translate(const glm::vec3& vector)
 {
     m_position += vector;
 }
 
-void Transform::Rotate(glm::vec3 vector)
+void Transform::Rotate(const glm::quat& q)
 {
-    m_rotation += vector;
-    for (int i = 0; i < 3; i++)
-        if (vector[i] > 2.f)
-            vector[i] -= 2.f;
+    m_rotation *= q;
 }
 
-void Transform::Scale(glm::vec3 vector)
+void Transform::Scale(const glm::vec3& vector)
 {
     m_size += vector;
 }
 
 glm::vec3 Transform::GetPosition() const { return m_position; }
-glm::vec3 Transform::GetRotation() const { return m_rotation; }
+glm::quat Transform::GetRotation() const { return m_rotation; }
 glm::vec3 Transform::GetSize() const { return m_size; }
-glm::mat4 Transform::GetModel() { return translate(rotateEuler(scale(glm::mat4(1.0f), m_size), m_rotation), m_position); }
+glm::mat4 Transform::GetModel() const { return translate(rotate(scale(glm::mat4(1.0f), m_size), m_rotation), m_position); }
 
-glm::mat4 Transform::translate(glm::mat4& model, const glm::vec3& vector)
-{
-    model[3][0] += vector.x;
-    model[3][1] += vector.y;
-    model[3][2] += vector.z;
-    return model;
-}
+void Transform::SetPosition(const glm::vec3& position) { m_position = position; }
+void Transform::SetRotation(const glm::quat& q) { m_rotation = q; }
+void Transform::SetSize(const glm::vec3& size) { m_size = size; }
 
 glm::mat4 Transform::translate(glm::mat4&& model, const glm::vec3& vector)
 {
@@ -58,64 +49,10 @@ glm::mat4 Transform::translate(glm::mat4&& model, const glm::vec3& vector)
     return model;
 }
 
-glm::mat4 Transform::rotateEuler(glm::mat4& model, const glm::vec3& vector)
+glm::mat4 Transform::rotate(glm::mat4&& model, const glm::quat q)
 {
-    const float x = vector.x, y = vector.y, z = vector.z;
-    const glm::mat4 rotationMatrix = {
-        { cos(y) * cos(z),
-          sin(x) * sin(y) * cos(z) + cos(x) * sin(z),
-         -cos(x) * sin(y) * cos(z) + sin(x) * sin(z),
-          0.0f },
-
-        { -cos(y) * sin(z),
-          -sin(x) * sin(y) * sin(z) + cos(x) * cos(z),
-           cos(x) * sin(y) * sin(z) + sin(x) * cos(z),
-           0.0f },
-
-        { sin(y),
-         -sin(x) * cos(y),
-          cos(x) * cos(y),
-          0.0f },
-
-        { 0.0f, 0.0f, 0.0f, 1.0f }
-    };
-
-    model *= rotationMatrix;
-    return model * rotationMatrix;
-}
-
-glm::mat4 Transform::rotateEuler(glm::mat4&& model, const glm::vec3& vector)
-{
-    const float x = vector.x, y = vector.y, z = vector.z;
-    const glm::mat4 rotationMatrix = {
-        { cos(y) * cos(z),
-          sin(x) * sin(y) * cos(z) + cos(x) * sin(z),
-         -cos(x) * sin(y) * cos(z) + sin(x) * sin(z),
-          0.0f },
-
-        { -cos(y) * sin(z),
-          -sin(x) * sin(y) * sin(z) + cos(x) * cos(z),
-           cos(x) * sin(y) * sin(z) + sin(x) * cos(z),
-           0.0f },
-
-        { sin(y),
-         -sin(x) * cos(y),
-          cos(x) * cos(y),
-          0.0f },
-
-        { 0.0f, 0.0f, 0.0f, 1.0f }
-    };
-
-    model *= rotationMatrix;
-    return model * rotationMatrix;
-}
-
-glm::mat4 Transform::scale(glm::mat4& model, const glm::vec3& vector)
-{
-    model[0][0] += vector.x;
-    model[1][1] += vector.y;
-    model[2][2] += vector.z;
-    return model;
+    glm::mat4 rot = glm::toMat4(q);
+    return rot * model;
 }
 
 glm::mat4 Transform::scale(glm::mat4&& model, const glm::vec3& vector)

@@ -1,6 +1,7 @@
 #include "Camera.h"
 
-#include <glm/ext/matrix_transform.hpp>
+#include <glm/ext/quaternion_trigonometric.hpp>
+#include <glm/gtc/quaternion.hpp>
 
 Camera::Camera(Transform&& transform)
     : m_transform(transform),
@@ -11,7 +12,7 @@ Camera::Camera(Transform&& transform)
 {
 }
 
-glm::mat4 Camera::GetPerspectiveProjection()
+glm::mat4 Camera::GetPerspectiveProjection() const
 {
     const float sx = 1.0f / std::tan(m_fovx * 0.5f);
     const float sy = sx * m_aspectRatio;
@@ -26,22 +27,35 @@ glm::mat4 Camera::GetPerspectiveProjection()
     return P;
 }
 
-glm::mat4 Camera::GetOrthographicProjection(float halfWidth, float halfHeight)
+glm::mat4 Camera::GetOrthographicProjection(const float halfWidth, const float halfHeight) const
 {
-    float left = -halfWidth, bottom = halfHeight;
-    float right = halfWidth, top = -halfHeight;
+    const float left = -halfWidth, bottom = halfHeight;
+    const float right = halfWidth, top = -halfHeight;
 
-    glm::mat4 projection = {
-        {2.f/(right - left), 0, 0, 0},
-        {0, 2.f/(top - bottom), 0, 0},
-        {0, 0, -2.f/(m_far - m_near), 0},
-        {-(right+left)/(right-left), -(top+bottom)/(top-bottom), -(m_far + m_near)/(m_far-m_near), 1},
-    };
+    glm::mat4 projection(0.f);
+    projection[0][0] = 2.f/(right - left);
+    projection[1][1] = 2.f/(top - bottom);
+    projection[2][2] = -2.f/(m_far - m_near);
+    projection[3] = {-(right+left)/(right-left), -(top+bottom)/(top-bottom), -(m_far + m_near)/(m_far-m_near), 1};
 
     return projection;
 }
 
-Transform Camera::GetTransform()
+glm::mat4 Camera::GetView() const { return glm::inverse(m_transform.GetModel()); }
+Transform Camera::GetTransform() const { return m_transform; }
+
+void Camera::LookAt(const glm::vec3& point)
 {
-    return m_transform;
+    glm::vec3 dir = point - m_transform.GetPosition();
+    float len     = glm::length(dir);
+    if (len < 1e-4f)
+        return;
+
+    dir /= len;
+    glm::vec3 up(0.f, 1.f, 0.f);
+    if (glm::abs(glm::dot(dir, up)) > 0.999f)
+        up = glm::vec3(1.f, 0.f, 0.f);
+
+    glm::quat q = glm::quatLookAt(dir, up);
+    m_transform.SetRotation(q);
 }
