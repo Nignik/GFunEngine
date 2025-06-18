@@ -3,7 +3,10 @@
 #include "Ecs.h"
 #include "Vulkan/Renderer.h"
 #include "Window.h"
-#include "RendererSystem.h"
+#include "Camera/Camera.h"
+#include "Systems/RendererSystem.h"
+#include "Components/Controller.h"
+#include "Systems/ControllerSystem.h"
 
 const std::vector<Vertex> vertices = {
 /* +Z (front)  */ {{-0.5f,-0.5f, 0.5f},{1,0,0},{0,0}}, // 0
@@ -69,29 +72,35 @@ int main() {
 	try
 	{
 		Window mainWindow;
-	    auto vk = std::make_shared<VulkanContext>(mainWindow.window());
+		auto vk = std::make_shared<VulkanContext>(mainWindow.window());
 
-	    constexpr int N = 1;
-	    glm::mat4 model = glm::mat4{1.f};
-	    for (int i = 0; i < N; i++)
-	    {
-	        auto entt = ecs.CreateEntity();
-	        auto drawable = createDrawable(vk, vertices, indices);
-	        drawable.ubo = UniformBufferObject(model, glm::mat4{}, glm::mat4{});
-	    	drawable.transform = Transform({0.0f, 0.0f, 0.0f}, {0.f, 0.f, 0.f}, {1.f, 1.f, 1.f});
-	        ecs.AddComponents(entt, std::move(drawable));
-	    }
+		constexpr int N = 1;
+		glm::mat4 model = glm::mat4{1.f};
+		for (int i = 0; i < N; i++)
+		{
+			auto entt = ecs.CreateEntity();
+			auto drawable = createDrawable(vk, vertices, indices);
+			drawable.ubo = UniformBufferObject(model, glm::mat4{}, glm::mat4{});
+			drawable.transform = Transform({0.0f, 0.0f, 0.0f}, {0.f, 0.f, 0.f}, {1.f, 1.f, 1.f});
+			ecs.AddComponents(entt, std::move(drawable));
+		}
 
-	    Renderer renderer(mainWindow.window(), vk);
-        ecs.AddSystem<RenderSystem>(renderer);
+		Hori::Entity camera = ecs.CreateEntity();
+		Transform camTrans{{0.f, -10.f, -10.f}, glm::vec3{0.f}, glm::vec3{1.f}};
+		camTrans.LookAt({0.f, 0.f, 0.f});
+		ecs.AddComponents(camera, Camera{});
+		ecs.AddComponents(camera, std::move(camTrans));
 
+		Renderer renderer(mainWindow.window(), vk);
+		ecs.AddSystem<RenderSystem>(renderer);
+
+		auto prevTime = std::chrono::high_resolution_clock::now();
 		bool running = true;
         SDL_Event event;
         while (running)
         {
-            static auto startTime = std::chrono::high_resolution_clock::now();
             auto currentTime = std::chrono::high_resolution_clock::now();
-            float dt = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
+            float dt = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - prevTime).count();
 
             while (SDL_PollEvent(&event)) {
                 switch (event.type) {
@@ -108,6 +117,7 @@ int main() {
             }
             ecs.UpdateSystems(dt);
             vkDeviceWaitIdle(vk->GetDevice());
+        	prevTime = currentTime;
         }
 	}
 	catch (std::exception& e)

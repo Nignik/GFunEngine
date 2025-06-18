@@ -310,30 +310,14 @@ VkShaderModule GraphicsPipeline::createShaderModule(const std::vector<char>& cod
     return shaderModule;
 }
 
-void GraphicsPipeline::UpdateUniformBuffers(VkExtent2D extent, uint32_t currentImage, std::vector<Drawable>& drawables)
+void GraphicsPipeline::CopyUniformBuffers(const uint32_t currentImage, const std::vector<UniformBufferObject>& ubos) const
 {
-    assert(m_drawablesCount == drawables.size());
-
-    static auto startTime = std::chrono::high_resolution_clock::now();
-    auto currentTime = std::chrono::high_resolution_clock::now();
-    float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
-
-    Camera camera(Transform{{0.f, -10.f, 0.f}, {0.f, 0.f, 0.f}, {1.f, 1.f, 1.f}});
-    camera.LookAt(glm::vec3{0.f, 0.f, 0.f});
+    assert(m_drawablesCount == ubos.size());
 
     for (int i = 0; i < m_drawablesCount; i++)
     {
-        int idx = currentImage * m_drawablesCount + i;
-        auto ubo = drawables[i].ubo;
-
-        // Rotate for fun
-        drawables[i].transform.Rotate(glm::vec3(0.f, 1.f, 0.f) * time);
-
-        ubo.model = drawables[i].transform.GetModel();
-        ubo.view = camera.GetView();
-        ubo.proj = camera.GetPerspectiveProjection();
-
-        memcpy(m_uniformBuffers[idx]->GetMappedBuffer(), &ubo, sizeof(ubo));
+        const size_t idx = m_drawablesCount * currentImage + i;
+        memcpy(m_uniformBuffers[idx]->GetMappedBuffer(), &ubos[i], sizeof(ubos[i]));
     }
 }
 

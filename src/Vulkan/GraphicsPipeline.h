@@ -16,7 +16,7 @@ public:
     GraphicsPipeline(const std::shared_ptr<VulkanContext>& ctx, Swapchain& swapchain, size_t drawablesCount);
     ~GraphicsPipeline();
 
-    void UpdateUniformBuffers(VkExtent2D extent, uint32_t currentImage, std::vector<Drawable>& drawables);
+    void CopyUniformBuffers(uint32_t currentImage, const std::vector<UniformBufferObject>& ubos) const;
 
     [[nodiscard]] VkPipeline GetGraphicsPipeline() const;
     [[nodiscard]] VkDescriptorPool GetDescriptorPool() const;

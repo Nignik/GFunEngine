@@ -9,7 +9,7 @@ public:
     Transform(const glm::vec3& position, const glm::vec3& rotation, const glm::vec3& scale);
 
     void Translate(const glm::vec3& vector);
-    void Rotate(const glm::quat& q);
+    void Rotate(const glm::vec3& axis, float angle);
     void Scale(const glm::vec3& vector);
 
     glm::vec3 GetPosition() const;
@@ -17,9 +17,15 @@ public:
     glm::vec3 GetSize() const;
     glm::mat4 GetModel() const;
 
+    glm::vec3 GetForward() const;
+    glm::vec3 GetRight() const;
+
     void SetPosition(const glm::vec3& position);
     void SetRotation(const glm::quat& q);
     void SetSize(const glm::vec3& size);
+
+    void LookAt(const glm::vec3& point);
+
 
 private:
     glm::vec3 m_position;

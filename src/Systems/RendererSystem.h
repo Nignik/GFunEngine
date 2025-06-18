@@ -2,9 +2,9 @@
 #include <System.h>
 #include <vector>
 
-#include "Drawable.h"
-#include "Ecs.h"
-#include "Vulkan/Renderer.h"
+#include "../Drawable.h"
+#include "../Ecs.h"
+#include "../Vulkan/Renderer.h"
 
 class Renderer;
 

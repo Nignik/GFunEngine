@@ -147,7 +147,11 @@ void Renderer::DrawFrame(std::vector<Drawable>& drawables)
     VkSemaphore signalSemaphores[] = {m_renderFinishedSemaphores[m_currentFrame]};
     VkPipelineStageFlags waitStages[] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
 
-    m_gfx.UpdateUniformBuffers(m_swapchain.GetExtent(), imageIndex, drawables);
+    std::vector<UniformBufferObject> ubos;
+    ubos.reserve(drawables.size());
+    std::ranges::transform(drawables, std::back_inserter(ubos), [](const Drawable& drawable) { return drawable.ubo; });
+
+    m_gfx.CopyUniformBuffers(imageIndex, ubos);
 
     VkSubmitInfo submitInfo{};
     submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;

@@ -3,9 +3,8 @@
 #include <glm/ext/quaternion_trigonometric.hpp>
 #include <glm/gtc/quaternion.hpp>
 
-Camera::Camera(Transform&& transform)
-    : m_transform(transform),
-    m_near(0.1f),
+Camera::Camera()
+    : m_near(0.1f),
     m_far(10.f),
     m_fovx(90.f),
     m_aspectRatio(16.f/9.f)
@@ -41,21 +40,4 @@ glm::mat4 Camera::GetOrthographicProjection(const float halfWidth, const float h
     return projection;
 }
 
-glm::mat4 Camera::GetView() const { return glm::inverse(m_transform.GetModel()); }
-Transform Camera::GetTransform() const { return m_transform; }
-
-void Camera::LookAt(const glm::vec3& point)
-{
-    glm::vec3 dir = point - m_transform.GetPosition();
-    float len     = glm::length(dir);
-    if (len < 1e-4f)
-        return;
-
-    dir /= len;
-    glm::vec3 up(0.f, 1.f, 0.f);
-    if (glm::abs(glm::dot(dir, up)) > 0.999f)
-        up = glm::vec3(1.f, 0.f, 0.f);
-
-    glm::quat q = glm::quatLookAt(dir, up);
-    m_transform.SetRotation(q);
-}
+glm::mat4 Camera::GetView(const glm::mat4& model) const { return glm::inverse(model); }
