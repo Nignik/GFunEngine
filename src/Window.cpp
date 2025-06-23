@@ -18,6 +18,8 @@ Window::Window()
         throw std::runtime_error(std::string("SDL_CreateWindow failed: ") + SDL_GetError());
 
     SDL_AddEventWatch(resizingEventWatcher, this);
+    SDL_SetWindowRelativeMouseMode(m_window, true);
+    SDL_CaptureMouse(true);
 }
 
 Window::~Window()

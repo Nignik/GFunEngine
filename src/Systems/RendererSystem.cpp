@@ -10,20 +10,19 @@ void RenderSystem::Update(float dt)
     auto& ecs = Ecs::GetInstance();
 
     Camera camera;
-    Transform transform;
-    ecs.Each<Camera, Transform>([&camera, &transform](Hori::Entity e, Camera cam, Transform trans) {
+    Transform cameraTransform;
+    ecs.Each<Camera, Transform>([&camera, &cameraTransform](Hori::Entity e, const Camera& cam, const Transform& transform) {
         camera = cam;
-        transform = trans;
+        cameraTransform = transform;
     });
 
     static std::vector<Drawable> drawables;
     drawables.clear();
-    // TODO: iterate over drawables with transform
-    ecs.Each<Drawable>([dt, &camera, &transform](Hori::Entity, Drawable& drawable) {
-        drawable.transform.Rotate({1.f, 1.f, 0.f}, dt);
+    ecs.Each<Drawable, Transform>([dt, &camera, &cameraTransform](Hori::Entity, Drawable& drawable, Transform& transform) {
+        transform.Rotate({1.f, 1.f, 0.f}, dt);
 
-        drawable.ubo.model = drawable.transform.GetModel();
-        drawable.ubo.view = camera.GetView(transform.GetModel());
+        drawable.ubo.model = transform.GetModel();
+        drawable.ubo.view = camera.GetView(cameraTransform.GetModel());
         drawable.ubo.proj = camera.GetPerspectiveProjection();
         drawables.push_back(drawable);
     });

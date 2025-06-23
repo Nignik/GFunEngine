@@ -9,5 +9,4 @@ struct Drawable {
     std::shared_ptr<Buffer> vertexBuffer;
     std::shared_ptr<Buffer> indexBuffer;
     UniformBufferObject ubo;
-    Transform transform;
 };

@@ -7,6 +7,8 @@
 #include "Systems/RendererSystem.h"
 #include "Components/Controller.h"
 #include "Systems/ControllerSystem.h"
+#include "Systems/MovementSystem.h"
+#include "InputData.h"
 
 const std::vector<Vertex> vertices = {
 /* +Z (front)  */ {{-0.5f,-0.5f, 0.5f},{1,0,0},{0,0}}, // 0
@@ -81,18 +83,21 @@ int main() {
 			auto entt = ecs.CreateEntity();
 			auto drawable = createDrawable(vk, vertices, indices);
 			drawable.ubo = UniformBufferObject(model, glm::mat4{}, glm::mat4{});
-			drawable.transform = Transform({0.0f, 0.0f, 0.0f}, {0.f, 0.f, 0.f}, {1.f, 1.f, 1.f});
-			ecs.AddComponents(entt, std::move(drawable));
+			ecs.AddComponents(entt, std::move(drawable), Transform{{0.0f, 0.0f, 0.0f}, {0.f, 0.f, 0.f}, {1.f, 1.f, 1.f}});
 		}
 
 		Hori::Entity camera = ecs.CreateEntity();
 		Transform camTrans{{0.f, -10.f, -10.f}, glm::vec3{0.f}, glm::vec3{1.f}};
 		camTrans.LookAt({0.f, 0.f, 0.f});
-		ecs.AddComponents(camera, Camera{});
+		ecs.AddComponents(camera, Camera{}, Controller());
 		ecs.AddComponents(camera, std::move(camTrans));
 
 		Renderer renderer(mainWindow.window(), vk);
 		ecs.AddSystem<RenderSystem>(renderer);
+		ecs.AddSystem<ControllerSystem>(ControllerSystem());
+		ecs.AddSystem<MovementSystem>(MovementSystem());
+
+		ecs.AddSingletonComponent(InputEvents{});
 
 		auto prevTime = std::chrono::high_resolution_clock::now();
 		bool running = true;
@@ -110,14 +115,22 @@ int main() {
                     case SDL_EVENT_KEY_DOWN:
                         if (event.key.key == SDLK_ESCAPE)
                             running = false;
+                		else
+                			ecs.GetSingletonComponent<InputEvents>()->keyDown.push_back(event.key);
                         break;
+                	case SDL_EVENT_MOUSE_MOTION:
+                		ecs.GetSingletonComponent<InputEvents>()->mouseMotion.push_back(event.motion);
+                		break;
                     default:
                         break;
                 }
             }
+
             ecs.UpdateSystems(dt);
             vkDeviceWaitIdle(vk->GetDevice());
         	prevTime = currentTime;
+
+        	ecs.GetSingletonComponent<InputEvents>()->Clear();
         }
 	}
 	catch (std::exception& e)

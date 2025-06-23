@@ -18,6 +18,7 @@ public:
     glm::mat4 GetModel() const;
 
     glm::vec3 GetForward() const;
+    glm::vec3 GetUp() const;
     glm::vec3 GetRight() const;
 
     void SetPosition(const glm::vec3& position);

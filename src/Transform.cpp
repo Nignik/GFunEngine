@@ -42,7 +42,8 @@ glm::vec3 Transform::GetPosition() const { return m_position; }
 glm::quat Transform::GetRotation() const { return m_rotation; }
 glm::vec3 Transform::GetSize() const { return m_size; }
 glm::mat4 Transform::GetModel() const { return translate(rotate(scale(glm::mat4(1.0f), m_size), m_rotation), m_position); }
-glm::vec3 Transform::GetForward() const { return m_rotation * glm::vec3(0.f, 0.f, 1.f); }
+glm::vec3 Transform::GetForward() const { return m_rotation * glm::vec3(0.f, 0.f, -1.f); }
+glm::vec3 Transform::GetUp() const { return m_rotation * glm::vec3(0.f, -1.f, 0.f); }
 glm::vec3 Transform::GetRight() const { return m_rotation * glm::vec3(1.f, 0.f, 0.f); }
 
 void Transform::SetPosition(const glm::vec3& position) { m_position = position; }
