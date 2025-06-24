@@ -118,12 +118,22 @@ int main() {
                         break;
                     case SDL_EVENT_KEY_DOWN:
                         if (event.key.key == SDLK_ESCAPE)
-                            running = false;
-                		else if (event.key.type == SDL_EVENT_KEY_DOWN)
+                        {
+							SDL_SetWindowRelativeMouseMode(mainWindow.window(), false);
+                        	SDL_CaptureMouse(false);
+                        	ecs.GetComponent<Controller>(camera)->active = false;
+                        }
+                		else if (event.key.key == SDLK_SPACE)
+                		{
+                			SDL_SetWindowRelativeMouseMode(mainWindow.window(), true);
+                			SDL_CaptureMouse(true);
+                			ecs.GetComponent<Controller>(camera)->active = true;
+                		}
+                		else
                 			ecs.GetSingletonComponent<InputEvents>()->keyDown.push_back(event.key);
-                		else if (event.key.type == SDL_EVENT_MOUSE_BUTTON_DOWN)
+                	case SDL_EVENT_MOUSE_BUTTON_DOWN:
                 			ecs.GetSingletonComponent<InputEvents>()->mouseButton.push_back(event.button);
-                        break;
+							break;
                 	case SDL_EVENT_MOUSE_MOTION:
                 		ecs.GetSingletonComponent<InputEvents>()->mouseMotion.push_back(event.motion);
                 		break;

@@ -10,6 +10,12 @@ void ControllerSystem::Update(float dt)
     auto& ecs = Ecs::GetInstance();
 
     ecs.Each<Controller>([&ecs](Hori::Entity, Controller& controller) {
+        controller.dx = 0.f;
+        controller.dy = 0.f;
+
+        if (!controller.active)
+            return;
+
         glm::vec3 dir{};
         const auto* keyboard = SDL_GetKeyboardState(nullptr);
         if (keyboard[SDL_SCANCODE_W])
@@ -21,8 +27,6 @@ void ControllerSystem::Update(float dt)
         if (keyboard[SDL_SCANCODE_D])
             dir.x += 1.f;
 
-        controller.dx = 0.f;
-        controller.dy = 0.f;
         for (auto& motion : ecs.GetSingletonComponent<InputEvents>()->mouseMotion)
         {
             controller.dx = motion.xrel;

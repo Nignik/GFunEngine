@@ -21,13 +21,23 @@ void PhysicsSystem::Update(float dt)
 
     Camera camera;
     Transform cameraTransform;
-    ecs.Each<Camera, Transform, RayData>([&camera, &cameraTransform](Hori::Entity e, const Camera& cam, const Transform& transform, RayData& ray) {
+    bool castRay = false;
+
+    for (auto& button : ecs.GetSingletonComponent<InputEvents>()->mouseButton)
+        if (button.button == SDL_BUTTON_LEFT)
+            castRay = true;
+
+    ecs.Each<Camera, Transform, RayData>([&camera, &cameraTransform, &castRay](Hori::Entity e, const Camera& cam, const Transform& transform, RayData& ray) {
         camera = cam;
         cameraTransform = transform;
-        ray.active = true;
-        ray.origin = cameraTransform.GetPosition();
-        ray.dir = cameraTransform.GetForward();
-        ray.hit = RayHit{};
+
+        if (castRay)
+        {
+            ray.active = true;
+            ray.origin = cameraTransform.GetPosition();
+            ray.dir = cameraTransform.GetForward();
+            ray.hit = RayHit{};
+        }
     });
 
 
