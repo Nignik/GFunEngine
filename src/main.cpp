@@ -9,6 +9,9 @@
 #include "Systems/ControllerSystem.h"
 #include "Systems/MovementSystem.h"
 #include "InputData.h"
+#include "Raycast.h"
+#include "Collider.h"
+#include "Systems/PhysicsSystem.h"
 
 const std::vector<Vertex> vertices = {
 /* +Z (front)  */ {{-0.5f,-0.5f, 0.5f},{1,0,0},{0,0}}, // 0
@@ -83,19 +86,20 @@ int main() {
 			auto entt = ecs.CreateEntity();
 			auto drawable = createDrawable(vk, vertices, indices);
 			drawable.ubo = UniformBufferObject(model, glm::mat4{}, glm::mat4{});
-			ecs.AddComponents(entt, std::move(drawable), Transform{{0.0f, 0.0f, 0.0f}, {0.f, 0.f, 0.f}, {1.f, 1.f, 1.f}});
+			ecs.AddComponents(entt, std::move(drawable), Transform{{0.0f, 0.0f, 0.0f}, {0.f, 0.f, 0.f}, {1.f, 1.f, 1.f}}, SphereCollider{1.f, true});
 		}
 
 		Hori::Entity camera = ecs.CreateEntity();
 		Transform camTrans{{0.f, -10.f, -10.f}, glm::vec3{0.f}, glm::vec3{1.f}};
 		camTrans.LookAt({0.f, 0.f, 0.f});
-		ecs.AddComponents(camera, Camera{}, Controller());
+		ecs.AddComponents(camera, Camera{}, Controller{}, RayData{});
 		ecs.AddComponents(camera, std::move(camTrans));
 
 		Renderer renderer(mainWindow.window(), vk);
 		ecs.AddSystem<RenderSystem>(renderer);
 		ecs.AddSystem<ControllerSystem>(ControllerSystem());
 		ecs.AddSystem<MovementSystem>(MovementSystem());
+		ecs.AddSystem<PhysicsSystem>(PhysicsSystem());
 
 		ecs.AddSingletonComponent(InputEvents{});
 
@@ -115,8 +119,10 @@ int main() {
                     case SDL_EVENT_KEY_DOWN:
                         if (event.key.key == SDLK_ESCAPE)
                             running = false;
-                		else
+                		else if (event.key.type == SDL_EVENT_KEY_DOWN)
                 			ecs.GetSingletonComponent<InputEvents>()->keyDown.push_back(event.key);
+                		else if (event.key.type == SDL_EVENT_MOUSE_BUTTON_DOWN)
+                			ecs.GetSingletonComponent<InputEvents>()->mouseButton.push_back(event.button);
                         break;
                 	case SDL_EVENT_MOUSE_MOTION:
                 		ecs.GetSingletonComponent<InputEvents>()->mouseMotion.push_back(event.motion);

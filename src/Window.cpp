@@ -19,7 +19,7 @@ Window::Window()
 
     SDL_AddEventWatch(resizingEventWatcher, this);
     SDL_SetWindowRelativeMouseMode(m_window, true);
-    SDL_CaptureMouse(true);
+    SDL_CaptureMouse(false);
 }
 
 Window::~Window()

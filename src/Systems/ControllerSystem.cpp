@@ -21,10 +21,9 @@ void ControllerSystem::Update(float dt)
         if (keyboard[SDL_SCANCODE_D])
             dir.x += 1.f;
 
-        auto mouseMotion = ecs.GetSingletonComponent<InputEvents>()->mouseMotion;
         controller.dx = 0.f;
         controller.dy = 0.f;
-        for (auto& motion : mouseMotion)
+        for (auto& motion : ecs.GetSingletonComponent<InputEvents>()->mouseMotion)
         {
             controller.dx = motion.xrel;
             controller.dy = motion.yrel;
@@ -34,5 +33,7 @@ void ControllerSystem::Update(float dt)
             dir = glm::normalize(dir);
 
         controller.direction = dir;
+
+
     });
 }

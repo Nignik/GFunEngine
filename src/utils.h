@@ -15,7 +15,7 @@ static std::vector<char> readFile(const std::filesystem::path& filepath)
     std::ifstream file(filepath, std::ios::ate | std::ios::binary);
     if (!file.is_open())
     {
-        std::print("Failed to read file, couldnt open path {}", std::filesystem::absolute(filepath).string());
+        std::print("Failed to read file, couldn't open path {}", std::filesystem::absolute(filepath).string());
         return {};
     }
 
