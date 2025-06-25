@@ -121,13 +121,13 @@ int main() {
                         {
 							SDL_SetWindowRelativeMouseMode(mainWindow.window(), false);
                         	SDL_CaptureMouse(false);
-                        	ecs.GetComponent<Controller>(camera)->active = false;
+                        	ecs.GetComponent<Controller>(camera)->mouseMode = MouseMode::EDITOR;
                         }
                 		else if (event.key.key == SDLK_SPACE)
                 		{
                 			SDL_SetWindowRelativeMouseMode(mainWindow.window(), true);
                 			SDL_CaptureMouse(true);
-                			ecs.GetComponent<Controller>(camera)->active = true;
+                			ecs.GetComponent<Controller>(camera)->mouseMode = MouseMode::GAME;
                 		}
                 		else
                 			ecs.GetSingletonComponent<InputEvents>()->keyDown.push_back(event.key);

@@ -12,6 +12,7 @@
 #include "../Transform.h"
 #include "../InputData.h"
 #include "../Camera/Camera.h"
+#include "../Components/Controller.h"
 
 PhysicsSystem::PhysicsSystem() = default;
 
@@ -27,19 +28,40 @@ void PhysicsSystem::Update(float dt)
         if (button.button == SDL_BUTTON_LEFT)
             castRay = true;
 
-    ecs.Each<Camera, Transform, RayData>([&camera, &cameraTransform, &castRay](Hori::Entity e, const Camera& cam, const Transform& transform, RayData& ray) {
+    ecs.Each<Camera, Transform, Controller, RayData>([&](Hori::Entity, Camera& cam, Transform& transform, Controller& controller, RayData& ray) {
         camera = cam;
         cameraTransform = transform;
 
-        if (castRay)
+        if (castRay && controller.mouseMode == MouseMode::GAME)
         {
             ray.active = true;
             ray.origin = cameraTransform.GetPosition();
             ray.dir = cameraTransform.GetForward();
             ray.hit = RayHit{};
         }
-    });
+        else if (castRay && controller.mouseMode == MouseMode::EDITOR)
+        {
+            glm::ivec2 aspectRatio = cam.GetAspectRatio();
+            float ndcX =  (2.0f * controller.mouseX) / static_cast<float>(aspectRatio.x) - 1.f;
+            float ndcY =  1.f - (2.0f * controller.mouseY) / static_cast<float>(aspectRatio.y);
 
+            glm::vec4 clipNear = glm::vec4(ndcX, ndcY, -1.0f, 1.0f);
+            glm::vec4 clipFar  = glm::vec4(ndcX, ndcY,  1.0f, 1.0f);
+
+            glm::mat4 invViewProj = glm::inverse(camera.GetPerspectiveProjection() * camera.GetView(cameraTransform.GetModel()));
+
+            glm::vec4 pNear = invViewProj * clipNear;
+            pNear /= pNear.w;
+
+            glm::vec4 pFar  = invViewProj * clipFar;
+            pFar  /= pFar.w;
+
+            ray.active = true;
+            ray.origin = cameraTransform.GetPosition();
+            ray.dir = glm::normalize(glm::vec3(pFar) - ray.origin);
+            ray.hit = RayHit{};
+        }
+    });
 
     ecs.Each<RayData>([&ecs](Hori::Entity, RayData& ray) {
         if (!ray.active)

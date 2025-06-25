@@ -13,7 +13,9 @@ void ControllerSystem::Update(float dt)
         controller.dx = 0.f;
         controller.dy = 0.f;
 
-        if (!controller.active)
+        SDL_GetMouseState(&controller.mouseX, &controller.mouseY);
+
+        if (controller.mouseMode == MouseMode::EDITOR)
             return;
 
         glm::vec3 dir{};
