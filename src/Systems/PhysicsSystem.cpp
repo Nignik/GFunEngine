@@ -43,10 +43,10 @@ void PhysicsSystem::Update(float dt)
         {
             glm::ivec2 aspectRatio = cam.GetAspectRatio();
             float ndcX =  (2.0f * controller.mouseX) / static_cast<float>(aspectRatio.x) - 1.f;
-            float ndcY =  1.f - (2.0f * controller.mouseY) / static_cast<float>(aspectRatio.y);
+            float ndcY =  (2.0f * controller.mouseY) / static_cast<float>(aspectRatio.y) - 1.f;
 
-            glm::vec4 clipNear = glm::vec4(ndcX, ndcY, -1.0f, 1.0f);
-            glm::vec4 clipFar  = glm::vec4(ndcX, ndcY,  1.0f, 1.0f);
+            glm::vec4 clipNear = glm::vec4(ndcX, ndcY, 0.0f, 1.0f);
+            glm::vec4 clipFar  = glm::vec4(ndcX, ndcY, 1.0f, 1.0f);
 
             glm::mat4 invViewProj = glm::inverse(camera.GetPerspectiveProjection() * camera.GetView(cameraTransform.GetModel()));
 
@@ -88,7 +88,7 @@ void PhysicsSystem::Update(float dt)
             ray.hit = ray.hit.dist < dist ? RayHit{e, pos, dist} : ray.hit;
         });
 
-        ecs.Each<RectCollider, Transform>([&ecs, &ray](Hori::Entity& e, RectCollider& collider, Transform& transform) {
+        ecs.Each<BoxCollider, Transform>([&ecs, &ray](Hori::Entity& e, BoxCollider& collider, Transform& transform) {
             float tNear = -1e5f, tFar = 1e5f;
             glm::vec3 pos = transform.GetPosition();
             glm::mat3 invTransform = glm::inverse(glm::mat3(transform.GetModel()));

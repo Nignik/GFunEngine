@@ -11,9 +11,9 @@ struct SphereCollider
 	bool isTrigger;
 };
 
-struct RectCollider
+struct BoxCollider
 {
-	RectCollider(const glm::vec3 dims, const bool isTrigger = false)
+	BoxCollider(const glm::vec3 dims, const bool isTrigger = false)
 		: dims(dims),
 		isTrigger(isTrigger)
 	{}

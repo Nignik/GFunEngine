@@ -86,7 +86,7 @@ int main() {
 			auto entt = ecs.CreateEntity();
 			auto drawable = createDrawable(vk, vertices, indices);
 			drawable.ubo = UniformBufferObject(model, glm::mat4{}, glm::mat4{});
-			ecs.AddComponents(entt, std::move(drawable), Transform{{0.0f, 0.0f, 0.0f}, {0.f, 0.f, 0.f}, {5.f, 5.f, 5.f}}, RectCollider{{0.5f, 0.5f, 0.5f}, true});
+			ecs.AddComponents(entt, std::move(drawable), Transform{{0.0f, 0.0f, 0.0f}, {0.f, 0.f, 0.f}, {5.f, 5.f, 5.f}}, BoxCollider{{0.5f, 0.5f, 0.5f}, true});
 		}
 
 		Hori::Entity camera = ecs.CreateEntity();
