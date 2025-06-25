@@ -67,10 +67,9 @@ void PhysicsSystem::Update(float dt)
         if (!ray.active)
             return;
 
-        ecs.Each<SphereCollider>([&ecs, &ray](Hori::Entity& e, SphereCollider& collider) {
-            constexpr float epsilon = 1e-4f;
-
-            glm::vec3 pos = ecs.GetComponent<Transform>(e)->GetPosition();
+        constexpr float epsilon = 1e-4f;
+        ecs.Each<SphereCollider, Transform>([&ecs, &ray](Hori::Entity& e, SphereCollider& collider, Transform& transform) {
+            glm::vec3 pos = transform.GetPosition();
             glm::vec3 oc = ray.origin - pos;
             float b = glm::dot(oc, ray.dir);
             float c = glm::length2(oc) - collider.radius*collider.radius;
@@ -85,7 +84,46 @@ void PhysicsSystem::Update(float dt)
             if (t < epsilon)
                 return;
 
-            ray.hit = ray.hit.dist < glm::length(oc) ? RayHit{e, pos, glm::length(oc)} : ray.hit;
+            const float dist = glm::length(oc);
+            ray.hit = ray.hit.dist < dist ? RayHit{e, pos, dist} : ray.hit;
+        });
+
+        ecs.Each<RectCollider, Transform>([&ecs, &ray](Hori::Entity& e, RectCollider& collider, Transform& transform) {
+            float tNear = -1e5f, tFar = 1e5f;
+            glm::vec3 pos = transform.GetPosition();
+            glm::mat3 invTransform = glm::inverse(glm::mat3(transform.GetModel()));
+            glm::vec3 localOrigin = invTransform * (ray.origin - pos);
+            glm::vec3 localDir = invTransform * ray.dir;
+
+            for (int i = 0; i < 3; i++) {
+                if (glm::abs(localDir[i]) < epsilon)
+                {
+                    if (localOrigin[i] < -collider.dims[i] || localOrigin[i] > collider.dims[i])
+                        return;
+                }
+                else
+                {
+                    float t1 = (-collider.dims[i] - localOrigin[i]) / localDir[i];
+                    float t2 = (collider.dims[i] - localOrigin[i]) / localDir[i];
+
+                    if (t1 > t2)
+                        std::swap(t1, t2);
+
+                    tNear = std::max(tNear, t1);
+                    tFar = std::min(tFar, t2);
+
+                    if (tNear > tFar)
+                        return;
+                }
+            }
+
+            if (tFar < 0)
+                return;
+
+            float hitT = std::max(tNear, 0.f);
+            glm::vec3 hitPoint = ray.origin + hitT * ray.dir;
+            if (hitT < ray.hit.dist)
+                ray.hit = RayHit{ e, hitPoint, hitT };
         });
 
         if (ray.hit.e.Valid())
